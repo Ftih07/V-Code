@@ -10,13 +10,9 @@ class CodeBlueSession extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'patient_id',
-        'start_time',
-        'end_time',
-        'duration_seconds',
-        'final_transcription',
-        'status',
+        'user_id', 'patient_id', 'leader_name', 'team_members',
+        'start_time', 'end_time', 'duration_seconds',
+        'final_transcription', 'additional_notes', 'status',
     ];
 
     protected $casts = [

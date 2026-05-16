@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\CodeBlueController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
+// Controller
 use Laravel\Socialite\Facades\Socialite;
 
 Route::inertia('/', 'welcome', [
@@ -11,7 +13,17 @@ Route::inertia('/', 'welcome', [
 ])->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('/dashboard', [CodeBlueController::class, 'index'])->name('dashboard');
+
+    Route::get('/record/setup', [CodeBlueController::class, 'setup'])->name('record.setup');
+    Route::post('/record/setup', [CodeBlueController::class, 'startSession'])->name('record.start');
+    Route::get('/record/{patient}', [CodeBlueController::class, 'create'])->name('record.create');
+
+    Route::post('/record/store-draft', [CodeBlueController::class, 'storeDraft'])->name('record.store-draft');
+    Route::get('/record/summary/{codeBlueSession}', [CodeBlueController::class, 'summary'])->name('record.summary');
+
+    Route::get('/draft/{codeBlueSession}', [CodeBlueController::class, 'edit'])->name('draft.edit');
+    Route::put('/draft/{codeBlueSession}', [CodeBlueController::class, 'update'])->name('draft.update');
 });
 
 Route::get('/auth/google/redirect', function () {
@@ -21,7 +33,6 @@ Route::get('/auth/google/redirect', function () {
 Route::get('/auth/google/callback', function () {
     $googleUser = Socialite::driver('google')->user();
 
-    // 1. Cari atau buat user berdasarkan email
     $user = User::where('email', $googleUser->email)->first();
 
     if ($user) {
@@ -31,23 +42,19 @@ Route::get('/auth/google/callback', function () {
             'name' => $googleUser->name,
             'email' => $googleUser->email,
             'google_id' => $googleUser->id,
-            'email_verified_at' => now(), // Otomatis verified jika via Google
+            'email_verified_at' => now(),
         ]);
     }
 
-    // 2. CEK 2FA: Apakah user ini mengaktifkan 2FA?
     if ($user->two_factor_secret) {
-        // Simpan sesi sementara untuk Fortify
         session()->put([
             'login.id' => $user->id,
-            'login.remember' => true, // Ingat sesi setelah OTP sukses
+            'login.remember' => true,
         ]);
 
-        // Lempar ke halaman input OTP bawaan Fortify
         return redirect()->route('two-factor.login');
     }
 
-    // 3. JIKA TANPA 2FA: Langsung login dan paksa fitur "Remember Me" aktif
     Auth::login($user, true);
 
     return redirect()->intended('/dashboard');
