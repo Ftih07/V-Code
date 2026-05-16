@@ -111,15 +111,13 @@ class CodeBlueController extends Controller
      */
     public function edit(CodeBlueSession $codeBlueSession)
     {
-        if ($codeBlueSession->user_id !== request()->user()->id) {
+        if ((int) $codeBlueSession->user_id !== (int) request()->user()->id) {
             abort(403, 'Anda tidak memiliki akses ke draf ini.');
         }
 
         $codeBlueSession->load(['patient', 'logs', 'user']);
 
-        return Inertia::render('review', [
-            'sessionData' => $codeBlueSession,
-        ]);
+        return Inertia::render('review', ['sessionData' => $codeBlueSession]);
     }
 
     /**
@@ -127,8 +125,8 @@ class CodeBlueController extends Controller
      */
     public function update(Request $request, CodeBlueSession $codeBlueSession)
     {
-        if ($codeBlueSession->user_id !== $request->user()->id) {
-            abort(403);
+        if ((int) $codeBlueSession->user_id !== (int) $request->user()->id) {
+            abort(403, 'Anda tidak memiliki akses ke draf ini.');
         }
 
         $request->validate([

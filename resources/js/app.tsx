@@ -6,6 +6,9 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
+// Import Banner
+import InstallBanner from '@/components/InstallBanner';
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
@@ -28,6 +31,8 @@ createInertiaApp({
             <TooltipProvider delayDuration={0}>
                 {app}
                 <Toaster />
+
+                <InstallBanner />
             </TooltipProvider>
         );
     },
