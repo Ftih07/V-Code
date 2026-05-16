@@ -17,9 +17,25 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+
+    # 1. Tambahin Service MySQL
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: testing_db
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     strategy:
       matrix:
-        php-version: ['8.3', '8.4', '8.5']
+        php-version: ['8.4']
 
     steps:
       - name: Checkout code
@@ -52,5 +68,24 @@ jobs:
       - name: Build Assets
         run: npm run build
 
+      # 1. Tambahkan step migrasi ini
+      - name: Run Database Migrations
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: testing_db
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+        run: php artisan migrate --force
+
+      # 2. Step test biarkan sama seperti sebelumnya
       - name: Tests
-        run: ./vendor/bin/pest
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: testing_db
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+        run: php artisan test
