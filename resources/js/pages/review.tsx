@@ -8,9 +8,17 @@ export default function Review({ sessionData }: any) {
         logs: sessionData.logs || [],
     });
 
+    // Fungsi update teks
     const handleLogChange = (index: number, newText: string) => {
         const newLogs = [...data.logs];
         newLogs[index].action_text = newText;
+        setData('logs', newLogs);
+    };
+
+    // Fungsi hapus baris
+    const handleLogDelete = (index: number) => {
+        const newLogs = [...data.logs];
+        newLogs.splice(index, 1); // Buang 1 item dari array berdasarkan index
         setData('logs', newLogs);
     };
 
@@ -32,7 +40,7 @@ export default function Review({ sessionData }: any) {
             <Head title={`Integrasi EMR Sesi #${sessionData.id}`} />
 
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-8">
-                <div className="overflow-hidden rounded-xl border border-sidebar-border bg-white shadow-sm dark:bg-zinc-900">
+                <div className="overflow-hidden rounded-xl border border-sidebar-border bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="flex items-center justify-between bg-blue-900 p-5 text-white">
                         <h2 className="text-xl font-bold tracking-wide">
                             EMR Rumah Sakit - Integrasi V-CODE
@@ -46,8 +54,9 @@ export default function Review({ sessionData }: any) {
 
                     <div className="grid grid-cols-1 gap-8 p-6 md:grid-cols-3">
                         <div className="space-y-6 md:col-span-1">
+                            {/* Box Identitas Pasien */}
                             <div className="rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50">
-                                <h3 className="mb-4 border-b pb-2 font-bold text-gray-900 dark:text-white">
+                                <h3 className="mb-4 border-b pb-2 font-bold text-gray-900 dark:border-zinc-700 dark:text-white">
                                     Identitas Pasien
                                 </h3>
                                 <div className="space-y-3 text-sm">
@@ -55,7 +64,7 @@ export default function Review({ sessionData }: any) {
                                         <span className="text-gray-500">
                                             Nama
                                         </span>
-                                        <span className="col-span-2 font-medium">
+                                        <span className="col-span-2 font-medium dark:text-gray-200">
                                             : {sessionData.patient?.name}
                                         </span>
                                     </div>
@@ -63,7 +72,7 @@ export default function Review({ sessionData }: any) {
                                         <span className="text-gray-500">
                                             No. RM
                                         </span>
-                                        <span className="col-span-2 font-medium">
+                                        <span className="col-span-2 font-medium dark:text-gray-200">
                                             : {sessionData.patient?.rm_number}
                                         </span>
                                     </div>
@@ -71,7 +80,7 @@ export default function Review({ sessionData }: any) {
                                         <span className="text-gray-500">
                                             Ruang
                                         </span>
-                                        <span className="col-span-2 font-medium">
+                                        <span className="col-span-2 font-medium dark:text-gray-200">
                                             :{' '}
                                             {sessionData.patient?.ward_location}
                                         </span>
@@ -80,7 +89,7 @@ export default function Review({ sessionData }: any) {
                                         <span className="text-gray-500">
                                             Tgl Sesi
                                         </span>
-                                        <span className="col-span-2 font-medium">
+                                        <span className="col-span-2 font-medium dark:text-gray-200">
                                             :{' '}
                                             {new Date(
                                                 sessionData.created_at,
@@ -90,8 +99,9 @@ export default function Review({ sessionData }: any) {
                                 </div>
                             </div>
 
+                            {/* Box Tim Code Blue */}
                             <div className="rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50">
-                                <h3 className="mb-4 border-b pb-2 font-bold text-gray-900 dark:text-white">
+                                <h3 className="mb-4 border-b pb-2 font-bold text-gray-900 dark:border-zinc-700 dark:text-white">
                                     Tim Code Blue
                                 </h3>
                                 <div className="space-y-3 text-sm">
@@ -99,7 +109,7 @@ export default function Review({ sessionData }: any) {
                                         <span className="text-gray-500">
                                             Leader
                                         </span>
-                                        <span className="col-span-2 font-medium">
+                                        <span className="col-span-2 font-medium dark:text-gray-200">
                                             : {sessionData.leader_name}
                                         </span>
                                     </div>
@@ -107,7 +117,7 @@ export default function Review({ sessionData }: any) {
                                         <span className="text-gray-500">
                                             Pencatat
                                         </span>
-                                        <span className="col-span-2 font-medium">
+                                        <span className="col-span-2 font-medium dark:text-gray-200">
                                             : {sessionData.user?.name}
                                         </span>
                                     </div>
@@ -115,7 +125,7 @@ export default function Review({ sessionData }: any) {
                                         <span className="text-gray-500">
                                             Anggota
                                         </span>
-                                        <span className="col-span-2 leading-relaxed font-medium">
+                                        <span className="col-span-2 leading-relaxed font-medium dark:text-gray-200">
                                             : {sessionData.team_members}
                                         </span>
                                     </div>
@@ -151,7 +161,7 @@ export default function Review({ sessionData }: any) {
                                                             <td className="w-32 px-4 py-3 font-mono text-gray-600 dark:text-gray-400">
                                                                 {log.time_mark}
                                                             </td>
-                                                            <td className="px-4 py-2">
+                                                            <td className="flex items-center gap-2 px-4 py-2">
                                                                 <input
                                                                     type="text"
                                                                     value={
@@ -171,8 +181,39 @@ export default function Review({ sessionData }: any) {
                                                                     disabled={
                                                                         sessionData.status !==
                                                                         'draft'
-                                                                    } 
+                                                                    }
                                                                 />
+
+                                                                {/* Tombol Hapus (Hanya muncul jika masih Draft) */}
+                                                                {sessionData.status ===
+                                                                    'draft' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleLogDelete(
+                                                                                idx,
+                                                                            )
+                                                                        }
+                                                                        className="rounded p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/30"
+                                                                        title="Hapus baris"
+                                                                    >
+                                                                        <svg
+                                                                            className="h-4 w-4"
+                                                                            fill="none"
+                                                                            stroke="currentColor"
+                                                                            viewBox="0 0 24 24"
+                                                                        >
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth={
+                                                                                    2
+                                                                                }
+                                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                            />
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     ),
@@ -213,7 +254,7 @@ export default function Review({ sessionData }: any) {
                                                 e.target.value,
                                             )
                                         }
-                                        className="w-full rounded-md border border-gray-300 bg-white p-3 text-sm focus:ring-2 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-950"
+                                        className="w-full rounded-md border border-gray-300 bg-white p-3 text-sm focus:ring-2 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-950 dark:text-gray-100"
                                         rows={3}
                                         placeholder="Contoh: Pasien ROSC tercapai pada 10:22..."
                                         disabled={
@@ -225,7 +266,7 @@ export default function Review({ sessionData }: any) {
                                 <div className="mt-2 flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-zinc-700">
                                     <Link
                                         href="/dashboard"
-                                        className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-zinc-800"
+                                        className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-zinc-600 dark:text-gray-300 dark:hover:bg-zinc-800"
                                     >
                                         Batal
                                     </Link>

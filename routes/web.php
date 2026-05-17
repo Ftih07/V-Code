@@ -4,15 +4,29 @@ use App\Http\Controllers\CodeBlueController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
 // Controller
 use Laravel\Socialite\Facades\Socialite;
 
-Route::inertia('/', 'welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+// HACK DEMO MVP: Auto-Login & Bypass Welcome Screen
+Route::get('/', function () {
+    // 1. Cari user ID 1, atau bikin otomatis kalau database masih kosong
+    $demoUser = User::firstOrCreate(
+        ['email' => 'demo@vcode.com'], // Patokan pencarian
+        [
+            'name' => 'Dokumentator Demo',
+            'password' => bcrypt('password123'),
+            'email_verified_at' => now(),
+        ]
+    );
 
-Route::middleware(['auth', 'verified'])->group(function () {
+    // 2. Paksa sistem untuk login menggunakan user tersebut
+    Auth::login($demoUser);
+
+    // 3. Langsung lempar ke dalam aplikasi
+    return redirect()->route('dashboard');
+})->name('home');
+
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [CodeBlueController::class, 'index'])->name('dashboard');
 
     Route::get('/record/setup', [CodeBlueController::class, 'setup'])->name('record.setup');

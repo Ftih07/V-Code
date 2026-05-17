@@ -13,7 +13,7 @@ class CodeBlueController extends Controller
     public function index(Request $request)
     {
         $sessions = CodeBlueSession::with('patient')
-            ->where('user_id', $request->user()->id)
+            // ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -111,9 +111,9 @@ class CodeBlueController extends Controller
      */
     public function edit(CodeBlueSession $codeBlueSession)
     {
-        if ((int) $codeBlueSession->user_id !== (int) request()->user()->id) {
-            abort(403, 'Anda tidak memiliki akses ke draf ini.');
-        }
+        // if ((int) $codeBlueSession->user_id !== (int) request()->user()->id) {
+        //     abort(403, 'Anda tidak memiliki akses ke draf ini.');
+        // }
 
         $codeBlueSession->load(['patient', 'logs', 'user']);
 
@@ -125,9 +125,9 @@ class CodeBlueController extends Controller
      */
     public function update(Request $request, CodeBlueSession $codeBlueSession)
     {
-        if ((int) $codeBlueSession->user_id !== (int) $request->user()->id) {
-            abort(403, 'Anda tidak memiliki akses ke draf ini.');
-        }
+        // if ((int) $codeBlueSession->user_id !== (int) $request->user()->id) {
+        //     abort(403, 'Anda tidak memiliki akses ke draf ini.');
+        // }
 
         $request->validate([
             'additional_notes' => 'nullable|string',
@@ -140,6 +140,12 @@ class CodeBlueController extends Controller
         ]);
 
         if ($request->has('logs')) {
+            $remainingLogIds = collect($request->logs)->pluck('id')->filter()->toArray();
+
+            SessionLog::where('session_id', $codeBlueSession->id)
+                ->whereNotIn('id', $remainingLogIds)
+                ->delete();
+
             foreach ($request->logs as $logData) {
                 if (isset($logData['id'])) {
                     SessionLog::where('id', $logData['id'])->update([
@@ -147,6 +153,8 @@ class CodeBlueController extends Controller
                     ]);
                 }
             }
+        } else {
+            SessionLog::where('session_id', $codeBlueSession->id)->delete();
         }
 
         return redirect()->route('dashboard')->with('success', 'Dokumentasi berhasil diintegrasikan ke EMR!');

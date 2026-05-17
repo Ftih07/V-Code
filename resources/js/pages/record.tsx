@@ -7,6 +7,7 @@ const SpeechRecognition =
 type SessionLog = {
     time_mark: string;
     action_text: string;
+    timestamp: number;
 };
 
 export default function Record({
@@ -47,11 +48,43 @@ export default function Record({
                             const timeMark = now.toLocaleTimeString('id-ID', {
                                 hour12: false,
                             });
+                            const currentTimestamp = now.getTime();
 
-                            setLogs((prev) => [
-                                ...prev,
-                                { time_mark: timeMark, action_text: text },
-                            ]);
+                            setLogs((prev) => {
+                                if (prev.length > 0) {
+                                    const lastLog = prev[prev.length - 1];
+                                    const timeDiff =
+                                        currentTimestamp - lastLog.timestamp;
+
+                                    const currentTextLower = text.toLowerCase();
+                                    const lastTextLower =
+                                        lastLog.action_text.toLowerCase();
+
+                                    if (
+                                        timeDiff < 5000 &&
+                                        currentTextLower.startsWith(
+                                            lastTextLower,
+                                        )
+                                    ) {
+                                        const newLogs = [...prev];
+                                        newLogs[newLogs.length - 1] = {
+                                            time_mark: lastLog.time_mark, 
+                                            action_text: text, 
+                                            timestamp: lastLog.timestamp,
+                                        };
+                                        return newLogs;
+                                    }
+                                }
+
+                                return [
+                                    ...prev,
+                                    {
+                                        time_mark: timeMark,
+                                        action_text: text,
+                                        timestamp: currentTimestamp,
+                                    },
+                                ];
+                            });
                         }
                     } else {
                         interimAcc += event.results[i][0].transcript;
@@ -81,7 +114,7 @@ export default function Record({
 
     const toggleRecording = () => {
         if (!isRecording) {
-            setLogs([]); 
+            setLogs([]);
             setInterimTranscript('');
             setTimer(0);
             setIsRecording(true);
@@ -104,15 +137,21 @@ export default function Record({
         setIsProcessing(true);
         const finalContent = logs.map((l) => l.action_text).join('. ') + '.';
 
+        // Buang properti 'timestamp' sebelum dikirim ke Laravel
+        const cleanLogsForDB = logs.map(({ time_mark, action_text }) => ({
+            time_mark,
+            action_text,
+        }));
+
         router.post(
             '/record/store-draft',
             {
                 patient_id: patient?.id,
-                leader_name: leader_name, 
-                team_members: team_members, 
+                leader_name: leader_name,
+                team_members: team_members,
                 duration_seconds: timer,
                 final_transcription: finalContent,
-                logs: logs,
+                logs: cleanLogsForDB,
             },
             {
                 onFinish: () => setIsProcessing(false),
@@ -254,7 +293,7 @@ export default function Record({
                                             strokeLinejoin="round"
                                             d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
                                         />
-                                    </svg> 
+                                    </svg>
                                 )}
                             </button>
                         </div>
