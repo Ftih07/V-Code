@@ -28,6 +28,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [CodeBlueController::class, 'index'])->name('dashboard');
+    Route::get('/riwayat', [CodeBlueController::class, 'history'])->name('riwayat');
 
     Route::get('/record/setup', [CodeBlueController::class, 'setup'])->name('record.setup');
     Route::post('/record/setup', [CodeBlueController::class, 'startSession'])->name('record.start');

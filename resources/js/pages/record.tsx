@@ -8,6 +8,7 @@ const SpeechRecognition =
 type SessionLog = {
     time_mark: string;
     action_text: string;
+    category: string;
     timestamp: number;
 };
 
@@ -15,10 +16,12 @@ export default function Record({
     patient,
     leader_name,
     team_members,
+    incident_type,
 }: {
     patient: { id: number; name: string; rm_number: string };
     leader_name: string;
     team_members: string;
+    incident_type: string;
 }) {
     const [isRecording, setIsRecording] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
@@ -32,6 +35,31 @@ export default function Record({
     const isRecordingRef = useRef(false);
     const logsEndRef = useRef<HTMLDivElement>(null);
 
+    const [autoFillData, setAutoFillData] = useState({
+        assessment_condition: '',
+        ttv_time: '',
+        ttv_td: '',
+        ttv_nadi: '',
+        ttv_rr: '',
+        ttv_spo2: '',
+        ttv_gcs: '',
+        evaluation_result: '',
+        evaluation_plan: '',
+    });
+
+    // 🚀 BIKIN JAM TTV OTOMATIS KEISI SAAT HALAMAN DIBUKA
+    useEffect(() => {
+        const now = new Date();
+        const currentTime = now
+            .toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            })
+            .replace(/\./g, ':');
+        setAutoFillData((prev) => ({ ...prev, ttv_time: currentTime }));
+    }, []);
+
     useEffect(() => {
         if (SpeechRecognition) {
             recognitionRef.current = new SpeechRecognition();
@@ -44,7 +72,7 @@ export default function Record({
 
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        const text = event.results[i][0].transcript.trim();
+                        let text = event.results[i][0].transcript.trim();
                         if (text) {
                             const now = new Date();
                             const timeMark = now.toLocaleTimeString('id-ID', {
@@ -52,37 +80,155 @@ export default function Record({
                             });
                             const currentTimestamp = now.getTime();
 
+                            const textLower = text.toLowerCase();
+                            let category = 'tindakan'; // Default awal
+
+                            // 🎯 SMART AUTO-FILL: PENGKAJIAN (TTV & KONDISI) + PEMBERSIH KATA KUNCI
+                            if (
+                                textLower.includes('tensi') ||
+                                textLower.includes('tekanan darah')
+                            ) {
+                                const cleanText = text
+                                    .replace(/tensi|tekanan darah/gi, '')
+                                    .trim();
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    ttv_td: prev.ttv_td
+                                        ? prev.ttv_td + ' ' + cleanText
+                                        : cleanText,
+                                }));
+                                category = 'pengkajian';
+                            } else if (textLower.includes('nadi')) {
+                                const cleanText = text
+                                    .replace(/nadi karotis|nadi/gi, '')
+                                    .trim();
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    ttv_nadi: prev.ttv_nadi
+                                        ? prev.ttv_nadi + ' ' + cleanText
+                                        : cleanText,
+                                }));
+                                category = 'pengkajian';
+                            } else if (
+                                textLower.includes('respirasi') ||
+                                textLower.includes('rr')
+                            ) {
+                                const cleanText = text
+                                    .replace(/respirasi|rr/gi, '')
+                                    .trim();
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    ttv_rr: prev.ttv_rr
+                                        ? prev.ttv_rr + ' ' + cleanText
+                                        : cleanText,
+                                }));
+                                category = 'pengkajian';
+                            } else if (
+                                textLower.includes('spo2') ||
+                                textLower.includes('saturasi')
+                            ) {
+                                const cleanText = text
+                                    .replace(
+                                        /spo2|saturasi oksigen|saturasi/gi,
+                                        '',
+                                    )
+                                    .trim();
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    ttv_spo2: prev.ttv_spo2
+                                        ? prev.ttv_spo2 + ' ' + cleanText
+                                        : cleanText,
+                                }));
+                                category = 'pengkajian';
+                            } else if (
+                                textLower.includes('gcs') ||
+                                textLower.includes('kesadaran')
+                            ) {
+                                const cleanText = text
+                                    .replace(
+                                        /kesadaran koma dengan|kesadaran|gcs/gi,
+                                        '',
+                                    )
+                                    .trim();
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    ttv_gcs: prev.ttv_gcs
+                                        ? prev.ttv_gcs + ' ' + cleanText
+                                        : cleanText,
+                                }));
+                                category = 'pengkajian';
+                            } else if (
+                                textLower.includes('ditemukan') ||
+                                textLower.includes('kondisi pasien')
+                            ) {
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    assessment_condition:
+                                        prev.assessment_condition
+                                            ? prev.assessment_condition +
+                                              '. ' +
+                                              text
+                                            : text,
+                                }));
+                                category = 'pengkajian';
+                            }
+                            // 🎯 SMART AUTO-FILL: EVALUASI
+                            else if (
+                                textLower.includes('rosc') ||
+                                textLower.includes('hasil')
+                            ) {
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    evaluation_result: prev.evaluation_result
+                                        ? prev.evaluation_result + '. ' + text
+                                        : text,
+                                }));
+                                category = 'evaluasi';
+                            } else if (
+                                textLower.includes('rencana') ||
+                                textLower.includes('pindah icu')
+                            ) {
+                                setAutoFillData((prev) => ({
+                                    ...prev,
+                                    evaluation_plan: prev.evaluation_plan
+                                        ? prev.evaluation_plan + '. ' + text
+                                        : text,
+                                }));
+                                category = 'evaluasi';
+                            }
+
+                            // 🎯 TETAP MASUKKAN KE LAYAR HP AGAR TIDAK DIKIRA HILANG (DENGAN CATEGORY-NYA)
                             setLogs((prev) => {
                                 if (prev.length > 0) {
                                     const lastLog = prev[prev.length - 1];
                                     const timeDiff =
                                         currentTimestamp - lastLog.timestamp;
 
-                                    const currentTextLower = text.toLowerCase();
-                                    const lastTextLower =
-                                        lastLog.action_text.toLowerCase();
-
+                                    // Cegah kalimat dobel di HP (Smart Append)
                                     if (
                                         timeDiff < 5000 &&
-                                        currentTextLower.startsWith(
-                                            lastTextLower,
-                                        )
+                                        text
+                                            .toLowerCase()
+                                            .startsWith(
+                                                lastLog.action_text.toLowerCase(),
+                                            )
                                     ) {
                                         const newLogs = [...prev];
                                         newLogs[newLogs.length - 1] = {
                                             time_mark: lastLog.time_mark,
                                             action_text: text,
+                                            category: category,
                                             timestamp: lastLog.timestamp,
                                         };
                                         return newLogs;
                                     }
                                 }
-
                                 return [
                                     ...prev,
                                     {
                                         time_mark: timeMark,
                                         action_text: text,
+                                        category: category,
                                         timestamp: currentTimestamp,
                                     },
                                 ];
@@ -144,10 +290,13 @@ export default function Record({
         setIsProcessing(true);
         const finalContent = logs.map((l) => l.action_text).join('. ') + '.';
 
-        const cleanLogsForDB = logs.map(({ time_mark, action_text }) => ({
-            time_mark,
-            action_text,
-        }));
+        const cleanLogsForDB = logs.map(
+            ({ time_mark, action_text, category }) => ({
+                time_mark,
+                action_text,
+                category: category || 'tindakan',
+            }),
+        );
 
         router.post(
             '/record/store-draft',
@@ -155,9 +304,21 @@ export default function Record({
                 patient_id: patient?.id,
                 leader_name: leader_name,
                 team_members: team_members,
+                incident_type: incident_type,
                 duration_seconds: timer,
                 final_transcription: finalContent,
                 logs: cleanLogsForDB,
+
+                // 🚀 PAYLOAD AUTO-FILL
+                assessment_condition: autoFillData.assessment_condition,
+                ttv_time: autoFillData.ttv_time, // 👈 Ngirim jam ke DB
+                ttv_td: autoFillData.ttv_td,
+                ttv_nadi: autoFillData.ttv_nadi,
+                ttv_rr: autoFillData.ttv_rr,
+                ttv_spo2: autoFillData.ttv_spo2,
+                ttv_gcs: autoFillData.ttv_gcs,
+                evaluation_result: autoFillData.evaluation_result,
+                evaluation_plan: autoFillData.evaluation_plan,
             },
             {
                 onFinish: () => setIsProcessing(false),
@@ -166,20 +327,29 @@ export default function Record({
     };
 
     return (
-        <div className="flex min-h-screen items-start justify-center bg-slate-200 dark:bg-zinc-900 md:py-8">
+        <div className="flex min-h-screen items-start justify-center bg-slate-200 md:py-8 dark:bg-zinc-900">
             <Head title="Perekaman Code Blue" />
 
             {/* Container Utama */}
-            <div className="flex w-full max-w-md min-h-screen md:min-h-[850px] md:max-h-[90vh] flex-col bg-slate-100 dark:bg-zinc-950 md:rounded-3xl md:shadow-2xl overflow-hidden md:border md:border-slate-200 dark:md:border-zinc-800">
-                
+            <div className="flex min-h-screen w-full max-w-md flex-col overflow-hidden bg-slate-100 md:max-h-[90vh] md:min-h-[850px] md:rounded-3xl md:border md:border-slate-200 md:shadow-2xl dark:bg-zinc-950 dark:md:border-zinc-800">
                 <div className="sticky top-0 z-10 flex items-center gap-3 bg-blue-900 px-4 py-3 shadow-md md:rounded-t-2xl">
                     <button
                         onClick={() => window.history.back()}
                         className="flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/10 active:scale-95"
                         aria-label="Kembali"
                     >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <svg
+                            className="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 19l-7-7 7-7"
+                            />
                         </svg>
                     </button>
                     <h1 className="flex-1 text-center text-base font-bold tracking-wide text-white">
@@ -188,14 +358,23 @@ export default function Record({
                     <div className="h-9 w-9" />
                 </div>
 
-                <div className="flex flex-1 flex-col gap-3 px-4 py-4 overflow-y-auto">
-
+                <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
                     {/* Hero Card - Deskripsi & Status */}
                     <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
                         <div className="flex items-start gap-4 p-4">
                             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-900">
-                                <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                <svg
+                                    className="h-8 w-8 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={1.5}
+                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                    />
                                 </svg>
                             </div>
                             <div className="flex-1">
@@ -206,7 +385,8 @@ export default function Record({
                                     {patient.name}
                                 </h2>
                                 <p className="mt-0.5 text-xs leading-relaxed text-gray-400 dark:text-gray-500">
-                                    Draft Dokumentasi Tindakan Keperawatan · Real-time Voice
+                                    Draft Dokumentasi Tindakan Keperawatan ·
+                                    Real-time Voice
                                 </p>
                             </div>
                         </div>
@@ -256,7 +436,7 @@ export default function Record({
                     )}
 
                     {/* Area Transkripsi */}
-                    <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-zinc-900 flex-1 flex flex-col min-h-[200px]">
+                    <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
                         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-zinc-800">
                             <h3 className="text-sm font-bold text-gray-800 dark:text-white">
                                 Transkripsi Real-time
@@ -268,12 +448,22 @@ export default function Record({
                             )}
                         </div>
 
-                        <div className="overflow-y-auto p-4 flex-1">
+                        <div className="flex-1 overflow-y-auto p-4">
                             {logs.length === 0 && !interimTranscript ? (
-                                <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+                                <div className="flex h-full flex-col items-center justify-center py-8 text-center">
                                     <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800">
-                                        <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                        <svg
+                                            className="h-6 w-6 text-gray-400"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={1.5}
+                                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                            />
                                         </svg>
                                     </div>
                                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -288,12 +478,34 @@ export default function Record({
                                     {logs.map((log, idx) => (
                                         <div
                                             key={idx}
-                                            className="flex gap-3 rounded-xl bg-blue-50/60 px-3 py-2.5 dark:bg-blue-950/20"
+                                            className={`mb-2 flex flex-col gap-1.5 rounded-xl px-3 py-2.5 shadow-sm transition-all duration-300 dark:bg-zinc-800/40 ${
+                                                log.category === 'pengkajian'
+                                                    ? 'border-l-4 border-blue-500 bg-blue-50/80 dark:border-blue-500'
+                                                    : log.category ===
+                                                        'evaluasi'
+                                                      ? 'border-l-4 border-purple-500 bg-purple-50/80 dark:border-purple-500'
+                                                      : 'border-l-4 border-emerald-500 bg-emerald-50/80 dark:border-emerald-500'
+                                            }`}
                                         >
-                                            <span className="mt-0.5 w-16 shrink-0 font-mono text-xs font-medium text-gray-400 dark:text-gray-500">
-                                                {log.time_mark}
-                                            </span>
-                                            <span className="text-sm font-medium leading-snug text-blue-900 dark:text-blue-100">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-mono text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                    {log.time_mark}
+                                                </span>
+                                                <span
+                                                    className={`rounded-full px-2 py-0.5 text-[10px] font-black tracking-wider uppercase ${
+                                                        log.category ===
+                                                        'pengkajian'
+                                                            ? 'bg-blue-200 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
+                                                            : log.category ===
+                                                                'evaluasi'
+                                                              ? 'bg-purple-200 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300'
+                                                              : 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                                    }`}
+                                                >
+                                                    {log.category}
+                                                </span>
+                                            </div>
+                                            <span className="text-sm leading-snug font-medium text-gray-800 dark:text-gray-100">
                                                 {log.action_text}
                                             </span>
                                         </div>
@@ -304,7 +516,7 @@ export default function Record({
                                             <span className="mt-0.5 w-16 shrink-0 font-mono text-xs text-gray-400">
                                                 --:--
                                             </span>
-                                            <span className="text-sm italic text-gray-500 dark:text-gray-400">
+                                            <span className="text-sm text-gray-500 italic dark:text-gray-400">
                                                 {interimTranscript}...
                                             </span>
                                         </div>
@@ -325,16 +537,41 @@ export default function Record({
                             >
                                 {isProcessing ? (
                                     <>
-                                        <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        <svg
+                                            className="h-5 w-5 animate-spin"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                            />
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                            />
                                         </svg>
                                         Menyimpan...
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        <svg
+                                            className="h-5 w-5"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M5 13l4 4L19 7"
+                                            />
                                         </svg>
                                         Selesai & Simpan Draft
                                     </>
@@ -349,23 +586,38 @@ export default function Record({
                                             ? 'bg-red-100 ring-4 ring-red-200 dark:bg-red-950 dark:ring-red-900'
                                             : 'bg-blue-900 hover:bg-blue-800'
                                     }`}
-                                    aria-label={isRecording ? 'Hentikan rekaman' : 'Mulai rekaman'}
+                                    aria-label={
+                                        isRecording
+                                            ? 'Hentikan rekaman'
+                                            : 'Mulai rekaman'
+                                    }
                                 >
                                     {isRecording ? (
                                         <div className="h-7 w-7 rounded-md bg-red-600" />
                                     ) : (
-                                        <svg className="h-9 w-9 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                        <svg
+                                            className="h-9 w-9 text-white"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth={1.8}
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                            />
                                         </svg>
                                     )}
                                 </button>
                                 <p className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                                    {isRecording ? 'Ketuk untuk berhenti' : 'Tekan untuk mulai merekam'}
+                                    {isRecording
+                                        ? 'Ketuk untuk berhenti'
+                                        : 'Tekan untuk mulai merekam'}
                                 </p>
                             </div>
                         )}
                     </div>
-
                 </div>
             </div>
         </div>

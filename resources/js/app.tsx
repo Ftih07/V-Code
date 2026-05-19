@@ -32,7 +32,7 @@ createInertiaApp({
                 {app}
                 <Toaster />
 
-                <InstallBanner />
+             
             </TooltipProvider>
         );
     },

@@ -10,12 +10,14 @@ class CodeBlueSession extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'patient_id', 'leader_name', 'team_members',
-        'start_time', 'end_time', 'duration_seconds',
-        'final_transcription', 'additional_notes', 'status',
+        'user_id', 'patient_id', 'leader_name', 'team_members', 'incident_type',
+        'start_time', 'end_time', 'duration_seconds', 'status', 'additional_notes',
+        'assessment_condition', 'ttv_time', 'ttv_td', 'ttv_nadi', 'ttv_rr', 'ttv_spo2', 'ttv_gcs',
+        'evaluation_result', 'evaluation_plan',
     ];
 
     protected $casts = [
+        'team_members' => 'array',
         'start_time' => 'datetime',
         'end_time' => 'datetime',
     ];

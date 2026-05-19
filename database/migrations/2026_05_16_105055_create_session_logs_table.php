@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('session_id')->constrained('code_blue_sessions')->cascadeOnDelete();
             $table->string('time_mark'); // Contoh: "00:15"
             $table->text('action_text'); // Contoh: "Memasang OPA"
+            $table->string('category')->default('tindakan');
             $table->timestamps();
         });
     }

@@ -13,15 +13,30 @@ return new class extends Migration
     {
         Schema::create('code_blue_sessions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('patient_id')->nullable()->constrained('patients')->nullOnDelete();
+            $table->foreignId('user_id')->constrained();
+            $table->foreignId('patient_id')->constrained();
+            $table->string('leader_name');
+            // Ganti tipe data team_members jadi JSON untuk repeater
+            $table->json('team_members')->nullable();
+            $table->string('incident_type')->nullable();
+            $table->timestamp('start_time');
+            $table->timestamp('end_time')->nullable();
+            $table->integer('duration_seconds');
+            $table->string('status')->default('draft');
+            $table->text('additional_notes')->nullable();
 
-            $table->dateTime('start_time')->nullable();
-            $table->dateTime('end_time')->nullable();
-            $table->integer('duration_seconds')->nullable();
+            // --- KOLOM BARU UNTUK PENGKAJIAN ---
+            $table->text('assessment_condition')->nullable(); // A. Kondisi Pasien
+            $table->string('ttv_time')->nullable();         // Pukul
+            $table->string('ttv_td')->nullable();           // TD
+            $table->string('ttv_nadi')->nullable();         // Nadi
+            $table->string('ttv_rr')->nullable();           // RR
+            $table->string('ttv_spo2')->nullable();         // SpO2
+            $table->string('ttv_gcs')->nullable();          // Kesadaran (GCS)
 
-            $table->longText('final_transcription')->nullable();
-            $table->enum('status', ['draft', 'finalized'])->default('draft');
+            // --- KOLOM BARU UNTUK EVALUASI ---
+            $table->text('evaluation_result')->nullable();  // A. Hasil
+            $table->text('evaluation_plan')->nullable();    // B. Rencana Tindak Lanjut
 
             $table->timestamps();
         });

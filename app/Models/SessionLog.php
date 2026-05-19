@@ -13,6 +13,7 @@ class SessionLog extends Model
         'session_id',
         'time_mark',
         'action_text',
+        'category',
     ];
 
     public function session()

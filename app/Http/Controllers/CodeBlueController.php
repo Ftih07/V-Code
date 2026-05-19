@@ -12,13 +12,28 @@ class CodeBlueController extends Controller
 {
     public function index(Request $request)
     {
-        $sessions = CodeBlueSession::with('patient')
-            // ->where('user_id', $request->user()->id)
+        $recentSessions = CodeBlueSession::with('patient')
+        // ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
+            ->take(5)
             ->get();
 
         return Inertia::render('dashboard', [
-            'sessions' => $sessions,
+            'sessions' => $recentSessions,
+        ]);
+    }
+
+    public function history(Request $request)
+    {
+        $query = CodeBlueSession::with('patient')->orderBy('created_at', 'desc');
+
+        // Filter sederhana berdasarkan Incident Type atau Status
+        if ($request->has('incident_type') && $request->incident_type != '') {
+            $query->where('incident_type', 'like', '%'.$request->incident_type.'%');
+        }
+
+        return Inertia::render('riwayat', [
+            'sessions' => $query->get(),
         ]);
     }
 
@@ -37,7 +52,8 @@ class CodeBlueController extends Controller
             'rm_number' => 'required|string|max:50',
             'ward_location' => 'required|string|max:100',
             'leader_name' => 'required|string|max:255',
-            'team_members' => 'required|string|max:255',
+            'team_members' => 'required|string',
+            'incident_type' => 'required|string',
         ]);
 
         $patient = Patient::create([
@@ -50,6 +66,7 @@ class CodeBlueController extends Controller
             'patient' => $patient->id,
             'leader_name' => $request->leader_name,
             'team_members' => $request->team_members,
+            'incident_type' => $request->incident_type,
         ]);
     }
 
@@ -60,6 +77,7 @@ class CodeBlueController extends Controller
             'patient' => $patient,
             'leader_name' => $request->query('leader_name'),
             'team_members' => $request->query('team_members'),
+            'incident_type' => $request->query('incident_type'),
         ]);
     }
 
@@ -72,15 +90,27 @@ class CodeBlueController extends Controller
             'logs' => 'array',
         ]);
 
+        // 🚀 TAMBAHKAN TANGKAPAN AUTO-FILL DI SINI
         $session = CodeBlueSession::create([
             'user_id' => $request->user()->id,
             'patient_id' => $request->patient_id,
             'leader_name' => $request->leader_name,
             'team_members' => $request->team_members,
+            'incident_type' => $request->incident_type,
             'start_time' => now()->subSeconds($request->duration_seconds),
             'end_time' => now(),
             'duration_seconds' => $request->duration_seconds,
             'status' => 'draft',
+
+            // Tangkap data dari suara yang udah dipilah oleh React
+            'assessment_condition' => $request->assessment_condition,
+            'ttv_td' => $request->ttv_td,
+            'ttv_nadi' => $request->ttv_nadi,
+            'ttv_rr' => $request->ttv_rr,
+            'ttv_spo2' => $request->ttv_spo2,
+            'ttv_gcs' => $request->ttv_gcs,
+            'evaluation_result' => $request->evaluation_result,
+            'evaluation_plan' => $request->evaluation_plan,
         ]);
 
         if ($request->has('logs') && is_array($request->logs)) {
@@ -89,6 +119,7 @@ class CodeBlueController extends Controller
                     'session_id' => $session->id,
                     'time_mark' => $log['time_mark'],
                     'action_text' => $log['action_text'],
+                    'category' => $log['category'] ?? 'tindakan',
                 ]);
             }
         }
@@ -132,10 +163,20 @@ class CodeBlueController extends Controller
         $request->validate([
             'additional_notes' => 'nullable|string',
             'logs' => 'array',
+            'assessment_condition' => 'nullable|string',
         ]);
 
         $codeBlueSession->update([
             'additional_notes' => $request->additional_notes,
+            'assessment_condition' => $request->assessment_condition,
+            'ttv_time' => $request->ttv_time,
+            'ttv_td' => $request->ttv_td,
+            'ttv_nadi' => $request->ttv_nadi,
+            'ttv_rr' => $request->ttv_rr,
+            'ttv_spo2' => $request->ttv_spo2,
+            'ttv_gcs' => $request->ttv_gcs,
+            'evaluation_result' => $request->evaluation_result,
+            'evaluation_plan' => $request->evaluation_plan,
             'status' => 'finalized',
         ]);
 
@@ -150,6 +191,7 @@ class CodeBlueController extends Controller
                 if (isset($logData['id'])) {
                     SessionLog::where('id', $logData['id'])->update([
                         'action_text' => $logData['action_text'],
+                        'category' => $logData['category'] ?? 'tindakan',
                     ]);
                 }
             }
