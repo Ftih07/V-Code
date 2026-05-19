@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import AppLayout from '@/layouts/new-app-layout';
 
 const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -29,6 +30,7 @@ export default function Record({
     const recognitionRef = useRef<any>(null);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const isRecordingRef = useRef(false);
+    const logsEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (SpeechRecognition) {
@@ -68,8 +70,8 @@ export default function Record({
                                     ) {
                                         const newLogs = [...prev];
                                         newLogs[newLogs.length - 1] = {
-                                            time_mark: lastLog.time_mark, 
-                                            action_text: text, 
+                                            time_mark: lastLog.time_mark,
+                                            action_text: text,
                                             timestamp: lastLog.timestamp,
                                         };
                                         return newLogs;
@@ -104,6 +106,11 @@ export default function Record({
         };
     }, []);
 
+    // Auto-scroll ke bawah saat log baru masuk
+    useEffect(() => {
+        logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [logs, interimTranscript]);
+
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60)
             .toString()
@@ -137,7 +144,6 @@ export default function Record({
         setIsProcessing(true);
         const finalContent = logs.map((l) => l.action_text).join('. ') + '.';
 
-        // Buang properti 'timestamp' sebelum dikirim ke Laravel
         const cleanLogsForDB = logs.map(({ time_mark, action_text }) => ({
             time_mark,
             action_text,
@@ -160,146 +166,210 @@ export default function Record({
     };
 
     return (
-        <div className="flex min-h-screen flex-col items-center bg-gray-50 px-2 py-4 sm:p-6">
+        <div className="flex min-h-screen items-start justify-center bg-slate-200 dark:bg-zinc-900 md:py-8">
             <Head title="Perekaman Code Blue" />
 
-            <div className="flex h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xl">
-                <div className="flex items-center justify-between bg-blue-900 p-4 text-white">
-                    <button onClick={() => window.history.back()}>
-                        <svg
-                            className="h-6 w-6"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 19l-7-7 7-7"
-                            />
+            {/* Container Utama */}
+            <div className="flex w-full max-w-md min-h-screen md:min-h-[850px] md:max-h-[90vh] flex-col bg-slate-100 dark:bg-zinc-950 md:rounded-3xl md:shadow-2xl overflow-hidden md:border md:border-slate-200 dark:md:border-zinc-800">
+                
+                <div className="sticky top-0 z-10 flex items-center gap-3 bg-blue-900 px-4 py-3 shadow-md md:rounded-t-2xl">
+                    <button
+                        onClick={() => window.history.back()}
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/10 active:scale-95"
+                        aria-label="Kembali"
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <h1 className="text-lg font-bold">
-                        V-CODE ({patient.name})
+                    <h1 className="flex-1 text-center text-base font-bold tracking-wide text-white">
+                        V-CODE
                     </h1>
-                    <div className="w-6"></div>
+                    <div className="h-9 w-9" />
                 </div>
 
-                <div className="flex flex-col items-center border-b border-gray-100 p-6">
-                    <div className="mb-4 flex w-full items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div
-                                className={`h-3 w-3 rounded-full ${isRecording ? 'animate-pulse bg-red-500' : 'bg-gray-300'}`}
-                            ></div>
-                            <span className="text-sm font-semibold text-gray-700">
-                                {isRecording ? 'Merekam...' : 'Siap Merekam'}
-                            </span>
+                <div className="flex flex-1 flex-col gap-3 px-4 py-4 overflow-y-auto">
+
+                    {/* Hero Card - Deskripsi & Status */}
+                    <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
+                        <div className="flex items-start gap-4 p-4">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-900">
+                                <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs font-semibold tracking-widest text-blue-900 uppercase dark:text-blue-400">
+                                    Code Blue
+                                </p>
+                                <h2 className="mt-0.5 text-base font-bold text-gray-900 dark:text-white">
+                                    {patient.name}
+                                </h2>
+                                <p className="mt-0.5 text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+                                    Draft Dokumentasi Tindakan Keperawatan · Real-time Voice
+                                </p>
+                            </div>
                         </div>
-                        <span className="font-mono text-lg font-bold">
-                            {formatTime(timer)}
-                        </span>
+
+                        {/* Status Bar */}
+                        <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 dark:border-zinc-800">
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Status
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <span
+                                    className={`h-2 w-2 rounded-full ${
+                                        isRecording
+                                            ? 'animate-pulse bg-red-500'
+                                            : 'bg-emerald-400'
+                                    }`}
+                                />
+                                <span
+                                    className={`text-xs font-semibold ${
+                                        isRecording
+                                            ? 'text-red-600 dark:text-red-400'
+                                            : 'text-emerald-600 dark:text-emerald-400'
+                                    }`}
+                                >
+                                    {isRecording
+                                        ? `Merekam · ${formatTime(timer)}`
+                                        : 'Siap Merekam'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
+                    {/* Visualizer saat merekam */}
                     {isRecording && (
-                        <div className="flex h-12 items-center justify-center gap-1">
-                            {[...Array(15)].map((_, i) => (
+                        <div className="flex items-center justify-center gap-0.5 rounded-2xl bg-red-50 py-4 dark:bg-red-950/20">
+                            {[...Array(20)].map((_, i) => (
                                 <div
                                     key={i}
-                                    className="w-1.5 animate-pulse rounded-full bg-red-400"
+                                    className="w-1 animate-pulse rounded-full bg-red-400 dark:bg-red-500"
                                     style={{
-                                        height: `${Math.random() * 100 + 20}%`,
-                                        animationDelay: `${i * 0.1}s`,
+                                        height: `${Math.random() * 28 + 8}px`,
+                                        animationDelay: `${i * 0.08}s`,
                                     }}
-                                ></div>
+                                />
                             ))}
                         </div>
                     )}
-                </div>
 
-                <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
-                    <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-800">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>{' '}
-                        Transkripsi (Real-time)
-                    </h3>
+                    {/* Area Transkripsi */}
+                    <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-zinc-900 flex-1 flex flex-col min-h-[200px]">
+                        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-zinc-800">
+                            <h3 className="text-sm font-bold text-gray-800 dark:text-white">
+                                Transkripsi Real-time
+                            </h3>
+                            {logs.length > 0 && (
+                                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                    {logs.length} tindakan
+                                </span>
+                            )}
+                        </div>
 
-                    <div className="space-y-3">
-                        {logs.map((log, idx) => (
-                            <div key={idx} className="flex gap-3 text-sm">
-                                <span className="w-16 shrink-0 font-mono text-gray-500">
-                                    {log.time_mark}
-                                </span>
-                                <span className="font-medium text-blue-900">
-                                    {log.action_text}
-                                </span>
-                            </div>
-                        ))}
+                        <div className="overflow-y-auto p-4 flex-1">
+                            {logs.length === 0 && !interimTranscript ? (
+                                <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+                                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800">
+                                        <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                        Tekan mikrofon untuk mulai
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+                                        Transkripsi muncul otomatis saat merekam
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {logs.map((log, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="flex gap-3 rounded-xl bg-blue-50/60 px-3 py-2.5 dark:bg-blue-950/20"
+                                        >
+                                            <span className="mt-0.5 w-16 shrink-0 font-mono text-xs font-medium text-gray-400 dark:text-gray-500">
+                                                {log.time_mark}
+                                            </span>
+                                            <span className="text-sm font-medium leading-snug text-blue-900 dark:text-blue-100">
+                                                {log.action_text}
+                                            </span>
+                                        </div>
+                                    ))}
 
-                        {interimTranscript && (
-                            <div className="flex gap-3 text-sm opacity-50">
-                                <span className="w-16 shrink-0 font-mono text-gray-500">
-                                    --:--:--
-                                </span>
-                                <span className="text-gray-600 italic">
-                                    {interimTranscript}...
-                                </span>
+                                    {interimTranscript && (
+                                        <div className="flex gap-3 rounded-xl border border-dashed border-gray-200 px-3 py-2.5 opacity-60 dark:border-zinc-700">
+                                            <span className="mt-0.5 w-16 shrink-0 font-mono text-xs text-gray-400">
+                                                --:--
+                                            </span>
+                                            <span className="text-sm italic text-gray-500 dark:text-gray-400">
+                                                {interimTranscript}...
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div ref={logsEndRef} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tombol Aksi */}
+                    <div className="mt-auto pt-2">
+                        {!isRecording && timer > 0 ? (
+                            <button
+                                onClick={saveDraft}
+                                disabled={isProcessing}
+                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-4 text-base font-bold text-white shadow-sm transition hover:bg-green-700 active:scale-95 disabled:opacity-60"
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Menyimpan...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Selesai & Simpan Draft
+                                    </>
+                                )}
+                            </button>
+                        ) : (
+                            <div className="flex flex-col items-center gap-2">
+                                <button
+                                    onClick={toggleRecording}
+                                    className={`flex h-20 w-20 items-center justify-center rounded-full shadow-md transition-all active:scale-90 ${
+                                        isRecording
+                                            ? 'bg-red-100 ring-4 ring-red-200 dark:bg-red-950 dark:ring-red-900'
+                                            : 'bg-blue-900 hover:bg-blue-800'
+                                    }`}
+                                    aria-label={isRecording ? 'Hentikan rekaman' : 'Mulai rekaman'}
+                                >
+                                    {isRecording ? (
+                                        <div className="h-7 w-7 rounded-md bg-red-600" />
+                                    ) : (
+                                        <svg className="h-9 w-9 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                        </svg>
+                                    )}
+                                </button>
+                                <p className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                                    {isRecording ? 'Ketuk untuk berhenti' : 'Tekan untuk mulai merekam'}
+                                </p>
                             </div>
                         )}
                     </div>
-                </div>
 
-                <div className="border-t border-gray-200 bg-white p-4">
-                    {!isRecording && timer > 0 ? (
-                        <button
-                            onClick={saveDraft}
-                            disabled={isProcessing}
-                            className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 py-3 font-bold text-white hover:bg-red-700"
-                        >
-                            <svg
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                />
-                            </svg>
-                            {isProcessing
-                                ? 'Menyimpan...'
-                                : 'Selesai & Simpan Draft'}
-                        </button>
-                    ) : (
-                        <div className="flex justify-center">
-                            <button
-                                onClick={toggleRecording}
-                                className={`flex h-20 w-20 items-center justify-center rounded-full transition-all ${isRecording ? 'bg-red-100' : 'bg-blue-600 hover:bg-blue-700'}`}
-                            >
-                                {isRecording ? (
-                                    <div className="h-8 w-8 rounded-sm bg-red-600"></div>
-                                ) : (
-                                    <svg
-                                        className="h-10 w-10 text-white"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                        />
-                                    </svg>
-                                )}
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
     );
 }
+
+Record.layout = (page: React.ReactNode) => <AppLayout children={page} />;
