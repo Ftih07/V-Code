@@ -79,11 +79,10 @@ export default function Record({
                                 hour12: false,
                             });
                             const currentTimestamp = now.getTime();
-
                             const textLower = text.toLowerCase();
-                            let category = 'tindakan'; // Default awal
+                            let category = 'tindakan';
 
-                            // 🎯 SMART AUTO-FILL: PENGKAJIAN (TTV & KONDISI) + PEMBERSIH KATA KUNCI
+                            // --- SMART AUTO-FILL: PENGKAJIAN (TTV & KONDISI) ---
                             if (
                                 textLower.includes('tensi') ||
                                 textLower.includes('tekanan darah')
@@ -93,10 +92,8 @@ export default function Record({
                                     .trim();
                                 setAutoFillData((prev) => ({
                                     ...prev,
-                                    ttv_td: prev.ttv_td
-                                        ? prev.ttv_td + ' ' + cleanText
-                                        : cleanText,
-                                }));
+                                    ttv_td: cleanText,
+                                })); // REPLACE
                                 category = 'pengkajian';
                             } else if (textLower.includes('nadi')) {
                                 const cleanText = text
@@ -104,10 +101,8 @@ export default function Record({
                                     .trim();
                                 setAutoFillData((prev) => ({
                                     ...prev,
-                                    ttv_nadi: prev.ttv_nadi
-                                        ? prev.ttv_nadi + ' ' + cleanText
-                                        : cleanText,
-                                }));
+                                    ttv_nadi: cleanText,
+                                })); // REPLACE
                                 category = 'pengkajian';
                             } else if (
                                 textLower.includes('respirasi') ||
@@ -118,10 +113,8 @@ export default function Record({
                                     .trim();
                                 setAutoFillData((prev) => ({
                                     ...prev,
-                                    ttv_rr: prev.ttv_rr
-                                        ? prev.ttv_rr + ' ' + cleanText
-                                        : cleanText,
-                                }));
+                                    ttv_rr: cleanText,
+                                })); // REPLACE
                                 category = 'pengkajian';
                             } else if (
                                 textLower.includes('spo2') ||
@@ -135,10 +128,8 @@ export default function Record({
                                     .trim();
                                 setAutoFillData((prev) => ({
                                     ...prev,
-                                    ttv_spo2: prev.ttv_spo2
-                                        ? prev.ttv_spo2 + ' ' + cleanText
-                                        : cleanText,
-                                }));
+                                    ttv_spo2: cleanText,
+                                })); // REPLACE
                                 category = 'pengkajian';
                             } else if (
                                 textLower.includes('gcs') ||
@@ -152,87 +143,70 @@ export default function Record({
                                     .trim();
                                 setAutoFillData((prev) => ({
                                     ...prev,
-                                    ttv_gcs: prev.ttv_gcs
-                                        ? prev.ttv_gcs + ' ' + cleanText
-                                        : cleanText,
-                                }));
+                                    ttv_gcs: cleanText,
+                                })); // REPLACE
                                 category = 'pengkajian';
                             } else if (
                                 textLower.includes('ditemukan') ||
                                 textLower.includes('kondisi pasien')
                             ) {
-                                setAutoFillData((prev) => ({
-                                    ...prev,
-                                    assessment_condition:
-                                        prev.assessment_condition
-                                            ? prev.assessment_condition +
-                                              '. ' +
-                                              text
-                                            : text,
-                                }));
+                                setAutoFillData((prev) => {
+                                    if (
+                                        prev.assessment_condition.includes(text)
+                                    )
+                                        return prev;
+                                    return {
+                                        ...prev,
+                                        assessment_condition:
+                                            prev.assessment_condition +
+                                            '. ' +
+                                            text,
+                                    };
+                                });
                                 category = 'pengkajian';
                             }
-                            // 🎯 SMART AUTO-FILL: EVALUASI
+                            // --- SMART AUTO-FILL: EVALUASI ---
                             else if (
                                 textLower.includes('rosc') ||
                                 textLower.includes('hasil')
                             ) {
-                                setAutoFillData((prev) => ({
-                                    ...prev,
-                                    evaluation_result: prev.evaluation_result
-                                        ? prev.evaluation_result + '. ' + text
-                                        : text,
-                                }));
+                                setAutoFillData((prev) => {
+                                    if (prev.evaluation_result.includes(text))
+                                        return prev;
+                                    return {
+                                        ...prev,
+                                        evaluation_result:
+                                            prev.evaluation_result +
+                                            '. ' +
+                                            text,
+                                    };
+                                });
                                 category = 'evaluasi';
                             } else if (
                                 textLower.includes('rencana') ||
                                 textLower.includes('pindah icu')
                             ) {
-                                setAutoFillData((prev) => ({
-                                    ...prev,
-                                    evaluation_plan: prev.evaluation_plan
-                                        ? prev.evaluation_plan + '. ' + text
-                                        : text,
-                                }));
+                                setAutoFillData((prev) => {
+                                    if (prev.evaluation_plan.includes(text))
+                                        return prev;
+                                    return {
+                                        ...prev,
+                                        evaluation_plan:
+                                            prev.evaluation_plan + '. ' + text,
+                                    };
+                                });
                                 category = 'evaluasi';
                             }
 
-                            // 🎯 TETAP MASUKKAN KE LAYAR HP AGAR TIDAK DIKIRA HILANG (DENGAN CATEGORY-NYA)
-                            setLogs((prev) => {
-                                if (prev.length > 0) {
-                                    const lastLog = prev[prev.length - 1];
-                                    const timeDiff =
-                                        currentTimestamp - lastLog.timestamp;
-
-                                    // Cegah kalimat dobel di HP (Smart Append)
-                                    if (
-                                        timeDiff < 5000 &&
-                                        text
-                                            .toLowerCase()
-                                            .startsWith(
-                                                lastLog.action_text.toLowerCase(),
-                                            )
-                                    ) {
-                                        const newLogs = [...prev];
-                                        newLogs[newLogs.length - 1] = {
-                                            time_mark: lastLog.time_mark,
-                                            action_text: text,
-                                            category: category,
-                                            timestamp: lastLog.timestamp,
-                                        };
-                                        return newLogs;
-                                    }
-                                }
-                                return [
-                                    ...prev,
-                                    {
-                                        time_mark: timeMark,
-                                        action_text: text,
-                                        category: category,
-                                        timestamp: currentTimestamp,
-                                    },
-                                ];
-                            });
+                            setLogs((prev) => [
+                                ...prev,
+                                {
+                                    time_mark: timeMark,
+                                    action_text: text,
+                                    category,
+                                    timestamp: currentTimestamp,
+                                },
+                            ]);
                         }
                     } else {
                         interimAcc += event.results[i][0].transcript;
