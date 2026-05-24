@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\ClassifyRule;
+use App\Models\MedicalPhrase;
+use App\Models\WordCorrection;
+use App\Observers\VCodeCacheBuster;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        $this->registerObservers();
     }
 
     /**
@@ -46,5 +52,15 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    /**
+     * Register model observers.
+     */
+    protected function registerObservers(): void
+    {
+        MedicalPhrase::observe(VCodeCacheBuster::class);
+        WordCorrection::observe(VCodeCacheBuster::class);
+        ClassifyRule::observe(VCodeCacheBuster::class);
     }
 }

@@ -3,8 +3,8 @@
 use App\Http\Controllers\CodeBlueController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
 // Controller
+use Illuminate\Support\Facades\Route;
 use Laravel\Socialite\Facades\Socialite;
 
 // HACK DEMO MVP: Auto-Login & Bypass Welcome Screen
@@ -26,12 +26,25 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 })->name('home');
 
+// ─── ENDPOINT API STT & DEBUG LOG ───
+Route::post('/api/transcribe', [CodeBlueController::class, 'transcribe'])->name('api.transcribe');
+// Endpoint untuk menyimpan log debug dari proses STT di frontend (misal: waktu pengiriman audio, hasil transkripsi sementara, error, dll)
+Route::post('/api/code-blue/debug-log', [CodeBlueController::class, 'storeDebugLog'])->name('api.debug-log');
+// View untuk melihat log debug untuk bantuan debugging
+Route::get('/api/code-blue/debug-log/{sessionId}', [CodeBlueController::class, 'getDebugLogs'])->name('api.get-debug-log');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [CodeBlueController::class, 'index'])->name('dashboard');
     Route::get('/riwayat', [CodeBlueController::class, 'history'])->name('riwayat');
 
     Route::get('/record/setup', [CodeBlueController::class, 'setup'])->name('record.setup');
     Route::post('/record/setup', [CodeBlueController::class, 'startSession'])->name('record.start');
+
+    // ↓ ROUTE BARU — harus di atas /record/{patient} supaya tidak
+    //   bertabrakan dengan wildcard parameter {patient}
+    Route::get('/record/classify-rules', [CodeBlueController::class, 'classifyRules'])
+        ->name('record.classify-rules');
+
     Route::get('/record/{patient}', [CodeBlueController::class, 'create'])->name('record.create');
 
     Route::post('/record/store-draft', [CodeBlueController::class, 'storeDraft'])->name('record.store-draft');
@@ -39,6 +52,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/draft/{codeBlueSession}', [CodeBlueController::class, 'edit'])->name('draft.edit');
     Route::put('/draft/{codeBlueSession}', [CodeBlueController::class, 'update'])->name('draft.update');
+
+    // Debug log endpoints (sudah ada sebelumnya, pastikan tetap ada)
+    Route::post('/api/code-blue/debug-log', [CodeBlueController::class, 'storeDebugLog']);
+    Route::get('/api/code-blue/debug-logs/{sessionId}', [CodeBlueController::class, 'getDebugLogs']);
 });
 
 Route::get('/auth/google/redirect', function () {

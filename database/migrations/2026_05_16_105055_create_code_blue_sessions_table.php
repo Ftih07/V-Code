@@ -38,6 +38,9 @@ return new class extends Migration
             $table->text('evaluation_result')->nullable();  // A. Hasil
             $table->text('evaluation_plan')->nullable();    // B. Rencana Tindak Lanjut
 
+            // --- KOLOM BARU UNTUK AUDIO FULL ---
+            $table->string('audio_path')->nullable();
+
             $table->timestamps();
         });
     }

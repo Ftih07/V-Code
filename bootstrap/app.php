@@ -26,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'password.confirm' => CheckPasswordOrGoogle::class,
         ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'api/transcribe',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

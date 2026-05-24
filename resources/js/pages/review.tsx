@@ -1,8 +1,14 @@
 import { Head, useForm, Link } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 import AppLayout from '@/layouts/new-app-layout';
+import axios from 'axios';
 
 export default function Review({ sessionData }: any) {
+    // ─── STATE UNTUK MODAL DEBUG LOG ───
+    const [showLogModal, setShowLogModal] = useState(false);
+    const [debugLogs, setDebugLogs] = useState<any[]>([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
     // Ekstrak jam dari waktu kejadian (created_at) sebagai default
     const defaultTime = new Date(sessionData.created_at)
         .toLocaleTimeString('id-ID', {
@@ -17,7 +23,7 @@ export default function Review({ sessionData }: any) {
 
         // Data Form Baru
         assessment_condition: sessionData.assessment_condition || '',
-        ttv_time: sessionData.ttv_time || defaultTime, // 👈 FIX-NYA DI SINI
+        ttv_time: sessionData.ttv_time || defaultTime,
         ttv_td: sessionData.ttv_td || '',
         ttv_nadi: sessionData.ttv_nadi || '',
         ttv_rr: sessionData.ttv_rr || '',
@@ -45,16 +51,39 @@ export default function Review({ sessionData }: any) {
         put(`/draft/${sessionData.id}`);
     };
 
-    // Fungsi bantu untuk parse team members secara aman (String, Array, atau JSON String)
+    // ─── FUNGSI FETCH DEBUG LOGS ───
+    const openDebugLog = async () => {
+        setShowLogModal(true);
+        setIsLoadingLogs(true);
+        try {
+            const res = await axios.get(
+                `/api/code-blue/debug-log/${sessionData.id}`,
+            );
+            setDebugLogs(res.data);
+        } catch (error) {
+            console.error('Gagal mengambil debug log', error);
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    };
+
+    // Pewarnaan teks log di modal
+    const getLogColor = (type: string) => {
+        if (type === 'result') return 'text-green-400';
+        if (type === 'send') return 'text-blue-400';
+        if (type === 'error') return 'text-red-400';
+        if (type === 'ws') return 'text-yellow-400';
+        if (type === 'silence') return 'text-gray-500';
+        return 'text-gray-300';
+    };
+
     const renderTeamMembers = () => {
         let members = sessionData.team_members;
 
         if (typeof members === 'string') {
             try {
-                // Antisipasi jika data dikirim dalam bentuk JSON string
                 members = JSON.parse(members);
             } catch (e) {
-                // Jika gagal parse, berarti string biasa dengan koma
                 return (
                     <p className="text-sm font-medium text-gray-800">
                         {members}
@@ -86,7 +115,7 @@ export default function Review({ sessionData }: any) {
         <>
             <Head title={`Integrasi EMR Sesi #${sessionData.id}`} />
 
-            <div className="mx-auto min-h-screen w-full max-w-[98%] bg-gray-50 p-4 antialiased">
+            <div className="relative mx-auto min-h-screen w-full max-w-[98%] bg-gray-50 p-4 antialiased">
                 <div className="flex flex-col gap-4">
                     {/* Header Aplikasi */}
                     <div className="flex items-center justify-between rounded-t-xl bg-blue-900 p-4 text-white shadow-sm">
@@ -113,11 +142,23 @@ export default function Review({ sessionData }: any) {
                                 EMR Rumah Sakit – Integrasi V-CODE
                             </h2>
                         </div>
-                        <span className="rounded-full bg-yellow-400 px-4 py-1 text-xs font-bold text-yellow-950 shadow-sm">
-                            {sessionData.status === 'draft'
-                                ? 'MENUNGGU VALIDASI DPJP'
-                                : 'SELESAI'}
-                        </span>
+
+                        {/* ─── CONTAINER TOMBOL KANAN ─── */}
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={openDebugLog}
+                                title="Lihat Log Sistem STT"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-800 transition hover:bg-blue-700"
+                            >
+                                🐛
+                            </button>
+                            <span className="rounded-full bg-yellow-400 px-4 py-1 text-xs font-bold text-yellow-950 shadow-sm">
+                                {sessionData.status === 'draft'
+                                    ? 'MENUNGGU VALIDASI DPJP'
+                                    : 'SELESAI'}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Section 1: Info Cards */}
@@ -125,19 +166,6 @@ export default function Review({ sessionData }: any) {
                         {/* Identitas */}
                         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                             <h4 className="mb-2 flex items-center gap-2 border-b border-gray-200 pb-1 font-bold text-gray-800">
-                                <svg
-                                    className="h-4 w-4 text-blue-800"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                    ></path>
-                                </svg>
                                 Identitas Pasien
                             </h4>
                             <div className="grid grid-cols-3 gap-1 text-sm">
@@ -180,22 +208,9 @@ export default function Review({ sessionData }: any) {
                             </div>
                         </div>
 
-                        {/* Info Kejadian */}
+                        {/* Informasi Kejadian */}
                         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                             <h4 className="mb-2 flex items-center gap-2 border-b border-gray-200 pb-1 font-bold text-gray-800">
-                                <svg
-                                    className="h-4 w-4 text-blue-800"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                    ></path>
-                                </svg>
                                 Informasi Kejadian
                             </h4>
                             <div className="grid grid-cols-3 gap-1 text-sm">
@@ -220,19 +235,6 @@ export default function Review({ sessionData }: any) {
                         {/* Tim Inti */}
                         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                             <h4 className="mb-2 flex items-center gap-2 border-b border-gray-200 pb-1 font-bold text-gray-800">
-                                <svg
-                                    className="h-4 w-4 text-blue-800"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                                    ></path>
-                                </svg>
                                 Tim Code Blue
                             </h4>
                             <div className="grid grid-cols-3 gap-1 text-sm">
@@ -256,19 +258,6 @@ export default function Review({ sessionData }: any) {
                         {/* Anggota Tim Lainnya */}
                         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                             <h4 className="mb-2 flex items-center gap-2 border-b border-gray-200 pb-1 font-bold text-gray-800">
-                                <svg
-                                    className="h-4 w-4 text-blue-800"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                    ></path>
-                                </svg>
                                 Anggota Tim & Tugas
                             </h4>
                             <div className="custom-scrollbar max-h-24 overflow-y-auto pr-2">
@@ -468,7 +457,6 @@ export default function Review({ sessionData }: any) {
                                                                 {log.time_mark}
                                                             </td>
                                                             <td className="flex items-center gap-2 px-3 py-1">
-                                                                {/* Fix Utama: Mengubah warna tulisan input dari transparan ke text-gray-900 */}
                                                                 <input
                                                                     type="text"
                                                                     value={
@@ -557,6 +545,33 @@ export default function Review({ sessionData }: any) {
                         </div>
                     </div>
 
+                    {/* ─── PEMUTAR REKAMAN SUARA ─── */}
+                    {sessionData.audio_path && (
+                        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div>
+                                <h3 className="flex items-center gap-2 text-sm font-bold text-blue-900">
+                                    <span className="text-xl">🎙️</span> Rekaman
+                                    Asli Code Blue
+                                </h3>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Bukti suara dari awal hingga akhir sesi.
+                                </p>
+                            </div>
+                            <div className="w-1/2">
+                                <audio
+                                    controls
+                                    className="h-10 w-full rounded-lg bg-gray-50 outline-none"
+                                >
+                                    <source
+                                        src={`/storage/${sessionData.audio_path}`}
+                                        type="audio/webm"
+                                    />
+                                    Browser Anda tidak mendukung elemen audio.
+                                </audio>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Footer Submit */}
                     <form
                         onSubmit={submit}
@@ -598,6 +613,72 @@ export default function Review({ sessionData }: any) {
                     </form>
                 </div>
             </div>
+
+            {/* ─── MODAL POPUP DEBUG LOG ─── */}
+            {showLogModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">🐛</span>
+                                <h3 className="font-mono text-sm font-bold tracking-widest text-zinc-100 uppercase">
+                                    Sistem STT Debug Log - Sesi #
+                                    {sessionData.id}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setShowLogModal(false)}
+                                className="text-zinc-400 transition hover:text-white"
+                            >
+                                <svg
+                                    className="h-6 w-6"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M6 18L18 6M6 6l12 12"
+                                    ></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="h-96 overflow-y-auto p-4 font-mono text-xs">
+                            {isLoadingLogs ? (
+                                <div className="flex h-full items-center justify-center text-zinc-500">
+                                    <p className="animate-pulse">
+                                        Mengambil log dari database...
+                                    </p>
+                                </div>
+                            ) : debugLogs.length === 0 ? (
+                                <div className="flex h-full items-center justify-center text-zinc-600">
+                                    <p>Belum ada data log untuk sesi ini.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {debugLogs.map((log: any, i: number) => (
+                                        <div key={i} className="flex gap-2">
+                                            <span className="shrink-0 text-zinc-600">
+                                                [{log.time_mark}]
+                                            </span>
+                                            <span
+                                                className={getLogColor(
+                                                    log.type,
+                                                )}
+                                            >
+                                                {log.message}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
