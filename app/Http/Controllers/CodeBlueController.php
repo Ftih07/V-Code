@@ -35,11 +35,46 @@ class CodeBlueController extends Controller
     {
         $query = CodeBlueSession::with('patient')->orderBy('created_at', 'desc');
 
-        if ($request->filled('incident_type')) {
-            $query->where('incident_type', 'like', '%'.$request->incident_type.'%');
+        // 1. Filter Pencarian Nama Pasien
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('patient', function ($q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%');
+            });
         }
 
-        return Inertia::render('riwayat', ['sessions' => $query->get()]);
+        // 2. Filter Jenis Kejadian
+        if ($request->filled('incident_type')) {
+            $query->where('incident_type', $request->incident_type);
+        }
+
+        // 3. Filter Status (Draft / Finalized)
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // 4. Filter Waktu (Hari ini / Minggu ini)
+        if ($request->filled('date_filter')) {
+            if ($request->date_filter === 'today') {
+                $query->whereDate('created_at', today());
+            } elseif ($request->date_filter === 'this_week') {
+                $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+            }
+        }
+
+        // 5. Filter Ada Audio
+        if ($request->filled('has_audio') && $request->has_audio === 'true') {
+            $query->whereNotNull('audio_path');
+        }
+
+        // (Opsional) Ambil daftar unik incident_type dari DB untuk dropdown seperti di Filament
+        $incidentTypes = CodeBlueSession::distinct()->pluck('incident_type')->filter()->values();
+
+        return Inertia::render('riwayat', [
+            'sessions' => $query->get(), // Gunakan ->paginate(10) jika data sudah sangat banyak
+            'incidentTypes' => $incidentTypes, // Kirim opsi dropdown ke React
+            'filters' => $request->only(['search', 'incident_type', 'status', 'date_filter', 'has_audio']),
+        ]);
     }
 
     public function setup()

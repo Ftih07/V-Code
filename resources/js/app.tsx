@@ -6,8 +6,8 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
-// Import Banner
 import InstallBanner from '@/components/InstallBanner';
+import SplashScreen from '@/components/SplashScreen';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -29,17 +29,24 @@ createInertiaApp({
     withApp(app) {
         return (
             <TooltipProvider delayDuration={0}>
+                {/* Splash screen — tampil hanya sekali saat boot, lalu fade-out */}
+                <SplashScreen />
+
+                {/* Konten utama aplikasi */}
                 {app}
+
+                {/* Toast notifikasi global */}
                 <Toaster />
 
-             
+                {/* Banner install PWA — Android native prompt + iOS panduan manual */}
+                <InstallBanner />
             </TooltipProvider>
         );
     },
     progress: {
-        color: '#4B5563',
+        color: '#2563EB',
     },
 });
 
-// This will set light / dark mode on load...
+// Set light / dark mode on load
 initializeTheme();

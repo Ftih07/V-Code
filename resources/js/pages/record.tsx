@@ -5,7 +5,6 @@ import axios from 'axios';
 import { flushSync } from 'react-dom';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
 type SessionLog = {
     time_mark: string;
     action_text: string;
@@ -40,13 +39,19 @@ type ClassifyRule = {
 };
 
 // ─── Konstanta ────────────────────────────────────────────────────────────────
-
 const GOOGLE_TIMEOUT_MS = 7_000;
 const MIN_BLOB_BYTES = 3_500;
-const WS_RESTART_DELAY = 150;
+const WS_RESTART_DELAY = 400;
 const WS_MAX_RESTARTS = 5;
-const WS_COOLDOWN_MS = 2_000;
+const WS_COOLDOWN_MS = 3_000;
 
+// ─── Deteksi mobile ──────────────────────────────────────────────────────────
+function isMobileBrowser(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+// ─── Fallback classify rules ──────────────────────────────────────────────────
 const FALLBACK_CLASSIFY_RULES: ClassifyRule[] = [
     {
         keyword: 'rosc',
@@ -226,7 +231,6 @@ const FALLBACK_CLASSIFY_RULES: ClassifyRule[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function classifyWithRules(
     text: string,
     rules: ClassifyRule[],
@@ -289,15 +293,20 @@ function isRefinement(a: string, b: string): boolean {
 }
 
 function pickMime(): string | null {
-    return (
-        ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find(
-            (m) => MediaRecorder.isTypeSupported(m),
-        ) ?? null
-    );
+    const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        'audio/mpeg',
+    ];
+    for (const mime of candidates) {
+        if (MediaRecorder.isTypeSupported(mime)) return mime;
+    }
+    return isMobileBrowser() ? '' : null;
 }
 
-// ─── Badge & style helpers (luar component agar stabil) ──────────────────────
-
+// ─── Badge & style helpers ────────────────────────────────────────────────────
 function catBg(c: string) {
     if (c === 'pengkajian')
         return 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/40';
@@ -305,13 +314,11 @@ function catBg(c: string) {
         return 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800/40';
     return 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40';
 }
-
 function catDot(c: string) {
     if (c === 'pengkajian') return 'bg-blue-500';
     if (c === 'evaluasi') return 'bg-purple-500';
     return 'bg-emerald-500';
 }
-
 function catBadge(c: string) {
     if (c === 'pengkajian')
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300';
@@ -319,7 +326,6 @@ function catBadge(c: string) {
         return 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300';
     return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300';
 }
-
 function debugColor(type: DebugEntry['type']) {
     if (type === 'result') return 'text-emerald-600 dark:text-emerald-400';
     if (type === 'send') return 'text-blue-600 dark:text-blue-400';
@@ -330,7 +336,6 @@ function debugColor(type: DebugEntry['type']) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-
 export default function Record({
     patient,
     leader_name,
@@ -370,12 +375,7 @@ export default function Record({
     const isRecordingRef = useRef(false);
     const autoFillRef = useRef(autoFill);
     const classifyRulesRef = useRef<ClassifyRule[]>([]);
-    const recognitionRef = useRef<any>(null);
-    const wsRestartCountRef = useRef(0);
-    const wsRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-        null,
-    );
-    const wsCooldownRef = useRef(false);
+
     const streamRef = useRef<MediaStream | null>(null);
     const recorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
@@ -383,10 +383,20 @@ export default function Record({
     const fullRecorderRef = useRef<MediaRecorder | null>(null);
     const fullChunksRef = useRef<Blob[]>([]);
     const [fullAudioBlob, setFullAudioBlob] = useState<Blob | null>(null);
-    const pendingRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(
-        new Map(),
-    );
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // WS / Desktop Refs
+    const recognitionRef = useRef<any>(null);
+    const wsRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+        null,
+    );
+
+    // Mobile VAD Refs
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const vadStateRef = useRef({
+        isSpeaking: false,
+        silenceTimer: null as ReturnType<typeof setTimeout> | null,
+    });
 
     // ── Sync refs ─────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -416,9 +426,7 @@ export default function Record({
                 setClassifyRules(sorted);
                 classifyRulesRef.current = sorted;
             })
-            .catch(() => {
-                /* Gunakan fallback */
-            });
+            .catch(() => {});
 
         return () => killAll();
     }, []);
@@ -455,31 +463,21 @@ export default function Record({
     // ── AutoFill ──────────────────────────────────────────────────────────────
     const updateAutoFill = useCallback(
         (field: keyof AutoFillData, text: string, isCorrection = false) => {
-            // Otomatis ubah kata " per " yang diapit angka/spasi menjadi "/"
-            // Contoh: "50 per 100" -> "50/100"
             let cleanText = text.replace(/\s+per\s+/gi, '/');
-
             setAutoFill((prev) => {
                 const existing = prev[field] as string;
                 if (!existing) return { ...prev, [field]: cleanText };
-
                 const entries = existing.split('. ');
                 const last = entries[entries.length - 1];
-
-                // FIX UTAMA: Jika ini dari Google STT (isCorrection = true),
-                // LANGSUNG timpa kalimat terakhir. Tidak perlu cek kemiripan (isRefinement) lagi.
                 if (isCorrection) {
                     entries[entries.length - 1] = cleanText;
                     return { ...prev, [field]: entries.join('. ') };
                 }
-
-                // Jika ini dari Web Speech (bukan koreksi), baru cek kemiripannya
                 if (isRefinement(last, cleanText)) {
                     entries[entries.length - 1] =
                         cleanText.length >= last.length ? cleanText : last;
                     return { ...prev, [field]: entries.join('. ') };
                 }
-
                 return { ...prev, [field]: existing + '. ' + cleanText };
             });
         },
@@ -551,231 +549,191 @@ export default function Record({
         [],
     );
 
-    // ── Google STT ────────────────────────────────────────────────────────────
+    // ── Upload Audio (Google STT) ──────────────────────────────────────────
     const uploadToGoogle = useCallback(
-        async (logIdx: number, chunks: Blob[]) => {
+        async (chunks: Blob[], sourceType: string, prefillLogIdx?: number) => {
             if (!chunks.length) return;
             const mime = mimeRef.current;
             const blob = new Blob(chunks, { type: mime });
-            if (blob.size < MIN_BLOB_BYTES) {
-                dbg(`Blob ${blob.size}B terlalu kecil — skip`, 'silence');
-                return;
-            }
-            const ext = mime.includes('ogg') ? 'ogg' : 'webm';
+            if (blob.size < MIN_BLOB_BYTES) return; // Skip ukuran terlalu kecil (noise)
+
+            let currentLogIdx = prefillLogIdx ?? -1;
+            const ext = mime.includes('ogg')
+                ? 'ogg'
+                : mime.includes('mp4')
+                  ? 'mp4'
+                  : 'webm';
             dbg(
-                `Kirim ${(blob.size / 1024).toFixed(0)}KB → Google (log #${logIdx})`,
+                `Kirim ${(blob.size / 1024).toFixed(0)}KB → Google (${sourceType})`,
                 'send',
             );
+
             const form = new FormData();
             form.append('audio', blob, `seg.${ext}`);
+
             try {
-                const t0 = Date.now();
                 const res = await axios.post('/api/transcribe', form, {
                     headers: { 'Content-Type': 'multipart/form-data' },
-                    timeout: 12_000,
+                    timeout: 15_000,
                 });
-                const ms = Date.now() - t0;
                 const text: string = res.data?.text ?? '';
-                const confidence: number = res.data?.confidence ?? 0;
-                if (!text) {
-                    dbg(`[${ms}ms] Google: (kosong)`, 'silence');
-                    return;
-                }
-                if (confidence < 0.72) {
+                const conf: number = res.data?.confidence ?? 0;
+
+                if (text && conf >= 0.7) {
                     dbg(
-                        `[${ms}ms] Ditolak (${Math.round(confidence * 100)}% < 72%): "${text}"`,
-                        'error',
+                        `Google [${Math.round(conf * 100)}%]: "${text}"`,
+                        'result',
                     );
-                    return;
+                    const cat =
+                        res.data?.category ??
+                        classifyWithRules(text, classifyRulesRef.current)
+                            .category;
+                    const field =
+                        res.data?.target_field ??
+                        classifyWithRules(text, classifyRulesRef.current)
+                            .targetField;
+
+                    if (currentLogIdx !== -1) {
+                        patchLog(currentLogIdx, text, cat);
+                    } else {
+                        const now = new Date();
+                        currentLogIdx = insertLog(
+                            text,
+                            cat,
+                            now.toLocaleTimeString('id-ID', { hour12: false }),
+                            now.getTime(),
+                        );
+                    }
+                    if (field) updateAutoFill(field, text, true);
+                    if (isMobileBrowser()) setInterimText('');
+                } else {
+                    dbg(`Google: (kosong/noise)`, 'silence');
+                    if (isMobileBrowser()) setInterimText('');
                 }
-                dbg(
-                    `[${ms}ms] Google [${Math.round(confidence * 100)}%]: "${text}"`,
-                    'result',
-                );
-                const cat =
-                    (res.data?.category as string) ??
-                    classifyWithRules(text, classifyRulesRef.current).category;
-                const field =
-                    (res.data?.target_field as keyof AutoFillData | null) ??
-                    classifyWithRules(text, classifyRulesRef.current)
-                        .targetField;
-                patchLog(logIdx, text, cat);
-                if (field) updateAutoFill(field, text, true);
             } catch (err) {
-                dbg(
-                    `Google error: ${axios.isAxiosError(err) ? `HTTP ${err.response?.status ?? err.message}` : String(err)}`,
-                    'error',
-                );
+                dbg(`Google Upload Error`, 'error');
+                if (isMobileBrowser()) setInterimText('');
             } finally {
-                setGooglePending((prev) => {
-                    const next = new Set(prev);
-                    next.delete(logIdx);
-                    return next;
-                });
-            }
-        },
-        [dbg, patchLog, updateAutoFill],
-    );
-
-    // ── handleFinalTranscript ─────────────────────────────────────────────────
-    const handleFinalTranscript = useCallback(
-        (text: string) => {
-            const now = new Date();
-            const timeMark = now.toLocaleTimeString('id-ID', { hour12: false });
-            const ts = now.getTime();
-            const { category, targetField } = classifyWithRules(
-                text,
-                classifyRulesRef.current,
-            );
-            dbg(`WS final: "${text}"`, 'ws');
-            const logIdx = insertLog(text, category, timeMark, ts);
-            if (targetField) updateAutoFill(targetField, text);
-            setGooglePending((prev) => new Set(prev).add(logIdx));
-            let audioSnapshot: Blob[] = [];
-            if (
-                recorderRef.current &&
-                recorderRef.current.state === 'recording'
-            ) {
-                audioSnapshot = [...chunksRef.current];
-                chunksRef.current = [];
-                const oldRecorder = recorderRef.current;
-                if (oldRecorder) {
-                    oldRecorder.ondataavailable = null;
-                    oldRecorder.stop();
-                }
-                setTimeout(() => {
-                    if (!isRecordingRef.current || !streamRef.current) return;
-                    const mime = mimeRef.current;
-                    const newRecorder = new MediaRecorder(streamRef.current, {
-                        mimeType: mime,
-                        audioBitsPerSecond: 96_000,
+                if (currentLogIdx !== -1) {
+                    setGooglePending((prev) => {
+                        const next = new Set(prev);
+                        next.delete(currentLogIdx);
+                        return next;
                     });
-                    newRecorder.ondataavailable = (e) => {
-                        if (e.data?.size > 0) chunksRef.current.push(e.data);
-                    };
-                    chunksRef.current = [];
-                    newRecorder.start(500);
-                    recorderRef.current = newRecorder;
-                }, 150);
-            }
-            const timeoutId = setTimeout(() => {
-                pendingRef.current.delete(logIdx);
-                setGooglePending((prev) => {
-                    const next = new Set(prev);
-                    next.delete(logIdx);
-                    return next;
-                });
-            }, GOOGLE_TIMEOUT_MS);
-            pendingRef.current.set(logIdx, timeoutId);
-            uploadToGoogle(logIdx, audioSnapshot).then(() => {
-                const tid = pendingRef.current.get(logIdx);
-                if (tid !== undefined) {
-                    clearTimeout(tid);
-                    pendingRef.current.delete(logIdx);
                 }
-            });
+            }
         },
-        [dbg, insertLog, updateAutoFill, uploadToGoogle],
+        [dbg, patchLog, insertLog, updateAutoFill],
     );
 
-    // ── Web Speech API ────────────────────────────────────────────────────────
-    const startWebSpeech = useCallback(() => {
+    // ── Fungsi Trigger Pengambilan Audio (Stop/Start Cepat) ─────────────────
+    const triggerChunkUpload = useCallback(
+        (sourceType: string, logIdx?: number) => {
+            if (
+                !recorderRef.current ||
+                recorderRef.current.state !== 'recording'
+            )
+                return;
+
+            const audioSnapshot = [...chunksRef.current];
+            chunksRef.current = [];
+
+            const oldRecorder = recorderRef.current;
+            oldRecorder.ondataavailable = null;
+            oldRecorder.stop();
+
+            setTimeout(() => {
+                if (!isRecordingRef.current || !streamRef.current) return;
+                const newRecorder = new MediaRecorder(streamRef.current, {
+                    audioBitsPerSecond: 96_000,
+                    ...(mimeRef.current && { mimeType: mimeRef.current }),
+                });
+                newRecorder.ondataavailable = (e) => {
+                    if (e.data?.size > 0) chunksRef.current.push(e.data);
+                };
+                newRecorder.start(300); // Start dengan slice kecil
+                recorderRef.current = newRecorder;
+            }, 100);
+
+            uploadToGoogle(audioSnapshot, sourceType, logIdx);
+        },
+        [uploadToGoogle],
+    );
+
+    // ── Web Speech API (HANYA UNTUK LAPTOP) ───────────────────────────────
+    const startWebSpeech = useCallback(async () => {
         const SR =
             (window as any).SpeechRecognition ||
             (window as any).webkitSpeechRecognition;
-        if (!SR) {
-            dbg('Web Speech tidak tersedia', 'error');
-            return;
-        }
+        if (!SR) return;
+
         const rec = new SR();
         rec.continuous = true;
-        rec.interimResults = true;
         rec.lang = 'id-ID';
         rec.maxAlternatives = 1;
-        rec.onstart = () => {
-            wsRestartCountRef.current = 0;
-            dbg('WS started', 'ws');
-        };
+        rec.interimResults = true;
+
+        rec.onstart = () => dbg(`WS started (Desktop Mode)`, 'ws');
         rec.onresult = (event: any) => {
             let interim = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                const result = event.results[i];
-                const text = result[0].transcript.trim();
+                const text = event.results[i][0].transcript.trim();
                 if (!text) continue;
-                if (result.isFinal) handleFinalTranscript(text);
-                else interim += text;
+                if (event.results[i].isFinal) {
+                    const now = new Date();
+                    const { category, targetField } = classifyWithRules(
+                        text,
+                        classifyRulesRef.current,
+                    );
+                    dbg(`WS final: "${text}"`, 'ws');
+                    const logIdx = insertLog(
+                        text,
+                        category,
+                        now.toLocaleTimeString('id-ID', { hour12: false }),
+                        now.getTime(),
+                    );
+                    if (targetField) updateAutoFill(targetField, text);
+                    setGooglePending((prev) => new Set(prev).add(logIdx));
+
+                    triggerChunkUpload('Desktop WS', logIdx);
+                } else {
+                    interim += text;
+                }
             }
             setInterimText(interim);
         };
         rec.onerror = (e: any) => {
-            if (e.error === 'no-speech' || e.error === 'aborted') return;
-            if (e.error === 'not-allowed') {
-                dbg('WS: izin mikrofon dicabut!', 'error');
-                isRecordingRef.current = false;
-                setIsRecording(false);
-                return;
-            }
-            dbg(`WS error: ${e.error}`, 'error');
+            if (e.error !== 'no-speech') dbg(`WS error: ${e.error}`, 'error');
         };
         rec.onend = () => {
-            if (!isRecordingRef.current) return;
-            wsRestartCountRef.current += 1;
-            if (wsRestartCountRef.current >= WS_MAX_RESTARTS) {
-                if (!wsCooldownRef.current) {
-                    wsCooldownRef.current = true;
-                    wsRestartTimerRef.current = setTimeout(() => {
-                        wsCooldownRef.current = false;
-                        wsRestartCountRef.current = 0;
-                        if (isRecordingRef.current) {
-                            dbg('WS resume setelah cooldown', 'ws');
-                            startInstance();
-                        }
-                    }, WS_COOLDOWN_MS);
-                }
-                return;
+            if (isRecordingRef.current) {
+                wsRestartTimerRef.current = setTimeout(() => {
+                    try {
+                        recognitionRef.current?.start();
+                    } catch (e) {}
+                }, 400);
             }
-            wsRestartTimerRef.current = setTimeout(() => {
-                if (isRecordingRef.current) startInstance();
-            }, WS_RESTART_DELAY);
         };
         recognitionRef.current = rec;
-        function startInstance() {
-            try {
-                recognitionRef.current?.start();
-            } catch {
-                dbg('WS start skip', 'info');
-            }
-        }
-        startInstance();
-    }, [dbg, handleFinalTranscript]);
+        try {
+            recognitionRef.current?.start();
+        } catch (e) {}
+    }, [dbg, insertLog, updateAutoFill, triggerChunkUpload]);
 
-    // ── MediaRecorder ─────────────────────────────────────────────────────────
-    const startMediaRecorder = useCallback(
-        (stream: MediaStream, mime: string) => {
-            mimeRef.current = mime;
-            chunksRef.current = [];
-            const rec = new MediaRecorder(stream, {
-                mimeType: mime,
-                audioBitsPerSecond: 96_000,
-            });
-            rec.ondataavailable = (e) => {
-                if (e.data?.size > 0) chunksRef.current.push(e.data);
-            };
-            rec.start(500);
-            recorderRef.current = rec;
-        },
-        [],
-    );
-
-    // ── Start / Stop ──────────────────────────────────────────────────────────
+    // ── Start Recording Utama ────────────────────────────────────────────────
     const startRecording = async () => {
         const mime = pickMime();
-        if (!mime) {
+        if (!mime && !isMobileBrowser()) {
             alert(
-                'Browser tidak mendukung WebM/Opus. Gunakan Chrome/Edge terbaru.',
+                'Browser tidak mendukung format audio apapun. Coba Chrome/Edge terbaru.',
             );
             return;
         }
+
+        dbg(`Browser: ${navigator.userAgent.slice(0, 80)}`, 'info');
+        dbg(`MIME dipilih: ${mime || 'default iOS'}`, 'info');
+        dbg(`Mobile mode: ${isMobileBrowser()}`, 'info');
+
         let stream: MediaStream;
         try {
             stream = await navigator.mediaDevices.getUserMedia({
@@ -787,71 +745,131 @@ export default function Record({
                     channelCount: 1,
                 },
             });
+            dbg(`Stream OK: ${stream.getAudioTracks()[0].label}`, 'info');
         } catch (err) {
-            alert(
-                err instanceof DOMException && err.name === 'NotAllowedError'
-                    ? 'Izin mikrofon ditolak. Aktifkan di pengaturan browser.'
-                    : 'Gagal mengakses mikrofon.',
-            );
+            alert('Gagal akses mic. Pastikan izin browser menyala.');
             return;
         }
+
         streamRef.current = stream;
         isRecordingRef.current = true;
-        wsRestartCountRef.current = 0;
-        wsCooldownRef.current = false;
         setIsRecording(true);
         setInterimText('');
         setLogs([]);
         setTimer(0);
         setGooglePending(new Set());
+
         timerRef.current = setInterval(() => setTimer((t) => t + 1), 1_000);
-        startMediaRecorder(stream, mime);
-        startWebSpeech();
-        fullChunksRef.current = [];
-        const fullRec = new MediaRecorder(stream, {
-            mimeType: mime,
+
+        // 1. Rekam untuk chunking (STT)
+        mimeRef.current = mime || '';
+        chunksRef.current = [];
+        const options = {
             audioBitsPerSecond: 96_000,
-        });
+            ...(mime && { mimeType: mime }),
+        };
+        const rec = new MediaRecorder(stream, options);
+        rec.ondataavailable = (e) => {
+            if (e.data?.size > 0) chunksRef.current.push(e.data);
+        };
+        rec.start(300);
+        recorderRef.current = rec;
+
+        // 2. Rekaman Full untuk Backup
+        fullChunksRef.current = [];
+        const fullRec = new MediaRecorder(stream, options);
         fullRec.ondataavailable = (e) => {
             if (e.data.size > 0) fullChunksRef.current.push(e.data);
         };
-        fullRec.onstop = () => {
-            setFullAudioBlob(new Blob(fullChunksRef.current, { type: mime }));
-        };
+        fullRec.onstop = () =>
+            setFullAudioBlob(
+                new Blob(fullChunksRef.current, { type: mime || '' }),
+            );
         fullRec.start();
         fullRecorderRef.current = fullRec;
-        dbg('=== Recording dimulai (Hybrid Mode) ===', 'info');
+
+        // 3. Penanganan Mode (Web Speech vs VAD)
+        if (!isMobileBrowser()) {
+            startWebSpeech();
+        } else {
+            dbg('Mobile Mode: VAD Audio Aktif (Tanpa Web Speech)', 'info');
+            const audioCtx = new (
+                window.AudioContext || (window as any).webkitAudioContext
+            )();
+            audioContextRef.current = audioCtx;
+            const analyser = audioCtx.createAnalyser();
+            const source = audioCtx.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 512;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            const checkAudio = () => {
+                if (!isRecordingRef.current) {
+                    audioCtx.close();
+                    return;
+                }
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+                const avg = sum / bufferLength;
+
+                if (avg > 12) {
+                    // Ambang batas suara
+                    if (!vadStateRef.current.isSpeaking) {
+                        vadStateRef.current.isSpeaking = true;
+                        setInterimText('Mendengarkan...');
+                    }
+                    if (vadStateRef.current.silenceTimer) {
+                        clearTimeout(vadStateRef.current.silenceTimer);
+                        vadStateRef.current.silenceTimer = null;
+                    }
+                } else {
+                    // Jika mulai hening
+                    if (
+                        vadStateRef.current.isSpeaking &&
+                        !vadStateRef.current.silenceTimer
+                    ) {
+                        vadStateRef.current.silenceTimer = setTimeout(() => {
+                            vadStateRef.current.isSpeaking = false;
+                            vadStateRef.current.silenceTimer = null;
+                            setInterimText('Memproses suara...');
+                            triggerChunkUpload('Mobile VAD');
+                        }, 1500); // Tunggu 1.5 detik hening sebelum kirim
+                    }
+                }
+                requestAnimationFrame(checkAudio);
+            };
+            checkAudio();
+        }
+        dbg('=== Recording dimulai ===', 'info');
     };
 
     const killAll = useCallback(() => {
         isRecordingRef.current = false;
-        if (wsRestartTimerRef.current) {
-            clearTimeout(wsRestartTimerRef.current);
-            wsRestartTimerRef.current = null;
-        }
+        if (wsRestartTimerRef.current) clearTimeout(wsRestartTimerRef.current);
+        if (vadStateRef.current.silenceTimer)
+            clearTimeout(vadStateRef.current.silenceTimer);
         try {
             recognitionRef.current?.stop();
         } catch {}
-        recognitionRef.current = null;
+        try {
+            audioContextRef.current?.close();
+        } catch {}
+
         if (recorderRef.current?.state !== 'inactive')
             recorderRef.current?.stop();
-        recorderRef.current = null;
-        chunksRef.current = [];
         if (fullRecorderRef.current?.state !== 'inactive')
             fullRecorderRef.current?.stop();
-        fullRecorderRef.current = null;
+
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
         if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = null;
-        pendingRef.current.forEach((tid) => clearTimeout(tid));
-        pendingRef.current.clear();
     }, []);
 
     const toggleRecording = () => {
-        if (!isRecording) {
-            startRecording();
-        } else {
+        if (!isRecording) startRecording();
+        else {
             setIsRecording(false);
             setInterimText('');
             killAll();
@@ -859,7 +877,6 @@ export default function Record({
         }
     };
 
-    // ── Simpan draft ──────────────────────────────────────────────────────────
     const saveDraft = () => {
         setIsProcessing(true);
         router.post(
@@ -893,11 +910,6 @@ export default function Record({
     return (
         <>
             <Head title="Perekaman Code Blue — V-Code" />
-
-            {/*
-             * Mobile: full-screen, konten di-stack vertikal, mic di fixed bottom bar
-             * Desktop: max-w-lg centered, scrollable
-             */}
             <div className="flex justify-center">
                 <div className="w-full max-w-lg">
                     {/* ── PAGE HEADER ── */}
@@ -922,7 +934,6 @@ export default function Record({
                                 />
                             </svg>
                         </button>
-
                         <div className="min-w-0 flex-1">
                             <h1 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">
                                 Perekaman
@@ -931,8 +942,6 @@ export default function Record({
                                 {incident_type}
                             </p>
                         </div>
-
-                        {/* Timer chip */}
                         {(isRecording || timer > 0) && (
                             <div
                                 className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 ${isRecording ? 'bg-red-50 dark:bg-red-950/30' : 'bg-gray-100 dark:bg-white/5'}`}
@@ -975,7 +984,6 @@ export default function Record({
                                     {patient.rm_number}
                                 </p>
                             </div>
-                            {/* Status pill */}
                             <div
                                 className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 ${isRecording ? 'bg-red-50 dark:bg-red-950/30' : 'bg-emerald-50 dark:bg-emerald-950/30'}`}
                             >
@@ -989,8 +997,6 @@ export default function Record({
                                 </span>
                             </div>
                         </div>
-
-                        {/* Rules indicator */}
                         {classifyRules.length > 0 && (
                             <div className="border-t border-gray-100 px-4 py-2 dark:border-white/5">
                                 <p className="text-[11px] text-gray-400 dark:text-zinc-500">
@@ -1003,7 +1009,7 @@ export default function Record({
                         )}
                     </div>
 
-                    {/* ── AUDIO VISUALIZER (saat merekam) ── */}
+                    {/* ── AUDIO VISUALIZER ── */}
                     {isRecording && (
                         <div className="mb-4 flex items-center justify-center gap-0.5 rounded-2xl border border-red-100 bg-red-50 py-5 dark:border-red-900/20 dark:bg-red-950/20">
                             {Array.from({ length: 28 }).map((_, i) => (
@@ -1022,7 +1028,6 @@ export default function Record({
 
                     {/* ── TRANSKRIPSI CARD ── */}
                     <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
-                        {/* Header */}
                         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-white/5">
                             <div className="flex items-center gap-2">
                                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
@@ -1051,10 +1056,8 @@ export default function Record({
                             )}
                         </div>
 
-                        {/* Log area */}
                         <div className="max-h-[45vh] min-h-[180px] overflow-y-auto p-4 md:max-h-[360px]">
                             {logs.length === 0 && !interimText ? (
-                                /* Empty state */
                                 <div className="flex h-36 flex-col items-center justify-center text-center">
                                     <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 dark:bg-white/5">
                                         <svg
@@ -1113,15 +1116,17 @@ export default function Record({
                                             </p>
                                         </div>
                                     ))}
-
-                                    {/* Interim text */}
                                     {interimText && (
                                         <div className="flex items-start gap-2 rounded-xl border border-dashed border-gray-200 p-3 opacity-60 dark:border-zinc-700">
-                                            <span className="mt-0.5 flex-shrink-0 font-mono text-[11px] text-gray-400">
+                                            <span className="mt-0.5 flex-shrink-0 font-mono text-[11px] text-gray-400 dark:text-zinc-500">
                                                 --:--
                                             </span>
-                                            <span className="text-sm text-gray-500 italic dark:text-zinc-400">
-                                                {interimText}...
+                                            <span
+                                                className={`text-sm italic ${interimText === 'Mendengarkan...' ? 'text-blue-500' : 'text-gray-500'} dark:text-zinc-400`}
+                                            >
+                                                {interimText}
+                                                {!interimText.endsWith('...') &&
+                                                    '...'}
                                             </span>
                                         </div>
                                     )}
@@ -1132,7 +1137,7 @@ export default function Record({
                     </div>
 
                     {/* ── DEBUG PANEL ── */}
-                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all dark:border-white/5 dark:bg-[#1C1F2A]">
+                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                         <button
                             onClick={() => setShowDebug((v) => !v)}
                             className="flex w-full items-center justify-between bg-gray-50/50 px-4 py-3 hover:bg-gray-50 dark:bg-white/5 dark:hover:bg-white/10"
@@ -1179,7 +1184,6 @@ export default function Record({
                                 </svg>
                             </div>
                         </button>
-
                         {showDebug && (
                             <div className="max-h-52 overflow-y-auto bg-gray-50 p-4 text-gray-800 shadow-inner dark:bg-[#0A0C10] dark:text-zinc-300">
                                 {debugLogs.length === 0 ? (
@@ -1211,25 +1215,13 @@ export default function Record({
                             </div>
                         )}
                     </div>
-
-                    {/* ── SPACER ── */}
-                    {/* Tinggi spacer ditambah agar tidak tertutup action bar yang baru */}
                     <div className="h-32 md:h-0" />
                 </div>
             </div>
 
-            {/* ══════════════════════════════════════════════════════════════════
-             * FIXED BOTTOM ACTION BAR
-             * Mobile: always fixed at bottom, full width, above bottom nav
-             * Desktop: static di dalam flow, max-w-lg centered
-             * ══════════════════════════════════════════════════════════════════ */}
-            {/* ══════════════════════════════════════════════════════════════════
-             * FIXED BOTTOM ACTION BAR
-             * Melayang di atas bottom nav mobile (bottom-24)
-             * ══════════════════════════════════════════════════════════════════ */}
-            <div className="fixed right-0 bottom-24 left-0 z-40 flex justify-center px-4 transition-all duration-300 md:relative md:bottom-auto md:mt-6 md:px-0">
+            {/* ── FIXED BOTTOM ACTION BAR ── */}
+            <div className="fixed right-0 bottom-24 left-0 z-40 flex justify-center px-4 md:relative md:bottom-auto md:mt-6 md:px-0">
                 <div className="w-full max-w-lg rounded-[2rem] border border-white/60 bg-white/80 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none dark:border-white/10 dark:bg-[#1C1F2A]/90">
-                    {/* Selesai & Simpan (setelah rekam berhenti) */}
                     {!isRecording && timer > 0 ? (
                         <button
                             onClick={saveDraft}
@@ -1279,7 +1271,6 @@ export default function Record({
                             )}
                         </button>
                     ) : (
-                        /* Mic button */
                         <div className="flex flex-col items-center gap-2">
                             <button
                                 onClick={toggleRecording}
@@ -1288,17 +1279,11 @@ export default function Record({
                                         ? 'Hentikan rekaman'
                                         : 'Mulai rekaman'
                                 }
-                                className={`group relative flex h-16 w-16 items-center justify-center rounded-full shadow-lg transition-all duration-300 active:scale-95 ${
-                                    isRecording
-                                        ? 'bg-red-50 ring-4 ring-red-100 dark:bg-red-950/50 dark:ring-red-900/40'
-                                        : 'bg-blue-600 shadow-blue-200/60 hover:bg-blue-700 hover:shadow-blue-300/60 dark:shadow-blue-900/30'
-                                }`}
+                                className={`group relative flex h-16 w-16 items-center justify-center rounded-full shadow-lg transition-all duration-300 active:scale-95 ${isRecording ? 'bg-red-50 ring-4 ring-red-100 dark:bg-red-950/50 dark:ring-red-900/40' : 'bg-blue-600 shadow-blue-200/60 hover:bg-blue-700 hover:shadow-blue-300/60 dark:shadow-blue-900/30'}`}
                             >
                                 {isRecording ? (
-                                    /* Stop square with gentle pulse */
                                     <div className="h-6 w-6 rounded-md bg-red-500 transition-transform group-hover:scale-110" />
                                 ) : (
-                                    /* Mic Icon */
                                     <svg
                                         className="h-7 w-7 text-white transition-transform group-hover:scale-110"
                                         fill="none"

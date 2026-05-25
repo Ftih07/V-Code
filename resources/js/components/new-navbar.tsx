@@ -96,10 +96,16 @@ export default function NewNavbar({
     ];
 
     const isUrlActive = (href: string) => {
-        if (href === '/dashboard') return url === '/dashboard' || url === '/';
-        if (href === '/riwayat') return url === '/riwayat';
-        if (href === '/settings/profile') return url === '/settings/profile';
-        return url.startsWith(href);
+        // Ambil path utamanya saja, abaikan query parameter (?search=dll)
+        const currentPath = url.split('?')[0];
+
+        if (href === '/dashboard')
+            return currentPath === '/dashboard' || currentPath === '/';
+        if (href === '/riwayat') return currentPath === '/riwayat';
+        if (href === '/settings/profile')
+            return currentPath === '/settings/profile';
+
+        return currentPath.startsWith(href);
     };
 
     return (
