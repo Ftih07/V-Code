@@ -1,5 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { dashboard } from '@/routes';
 import AppLayout from '@/layouts/new-app-layout';
 
 type Session = {
@@ -14,166 +13,350 @@ type Session = {
 };
 
 export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
+    const draftCount = sessions.filter((s) => s.status === 'draft').length;
+    const doneCount = sessions.filter((s) => s.status !== 'draft').length;
 
     return (
         <>
-            <Head title="Dashboard" />
-            <div className="flex flex-col gap-4 p-4 md:h-[calc(100vh-110px)] md:overflow-hidden">
-                
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                    
-                    {/* Box 1: Tombol Utama Rekam */}
+            <Head title="Dashboard — V-Code" />
+
+            <div className="flex flex-col gap-5">
+                {/* ── TOP STATS ROW ── */}
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                    {/* CTA: Mulai Rekaman */}
                     <Link
                         href="/record/setup"
-                        className="group relative flex flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-b from-blue-50/50 to-blue-50 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-blue-100 hover:shadow-md hover:shadow-blue-100 col-span-2 md:col-span-1 dark:border-blue-900/30 dark:from-blue-950/10 dark:to-blue-950/20 dark:hover:bg-blue-950/30 dark:hover:shadow-none"
+                        className="group relative col-span-2 flex items-center gap-5 overflow-hidden rounded-2xl bg-blue-600 p-5 shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-200/60 md:col-span-1 md:flex-col md:items-start md:gap-3 md:p-6 dark:shadow-blue-900/30"
                     >
-                        <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-blue-400/10 blur-xl transition-all group-hover:scale-150" />
-                        
-                        <div className="rounded-xl bg-blue-100 p-3.5 transition-all duration-300 group-hover:scale-110 group-hover:bg-blue-200 dark:bg-blue-900/40 dark:group-hover:bg-blue-900/60">
+                        {/* Decorative circle */}
+                        <div className="absolute -top-8 -right-8 h-36 w-36 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-125" />
+                        <div className="absolute -right-4 -bottom-6 h-20 w-20 rounded-full bg-white/5" />
+
+                        <div className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white/20 transition-all duration-300 group-hover:bg-white/30">
                             <svg
-                                className="h-7 w-7 text-blue-600 dark:text-blue-400"
+                                className="h-6 w-6 text-white"
                                 fill="none"
                                 stroke="currentColor"
+                                strokeWidth="2"
                                 viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
                             >
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    strokeWidth={2}
                                     d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
                                 />
                             </svg>
                         </div>
-                        <span className="text-base font-bold tracking-wide text-blue-700 dark:text-blue-400">
-                            Mulai Rekaman
-                        </span>
+
+                        <div className="relative">
+                            <p className="text-base font-bold text-white">
+                                Mulai Rekaman
+                            </p>
+                            <p className="mt-0.5 text-xs font-medium text-blue-100">
+                                Code Blue baru
+                            </p>
+                        </div>
+
+                        <div className="absolute top-1/2 right-5 -translate-y-1/2 text-white/50 transition-transform duration-200 group-hover:translate-x-1 md:hidden">
+                            <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </div>
                     </Link>
 
-                    {/* Box 2: Info Total Sesi */}
-                    <div className="group relative flex flex-col justify-center overflow-hidden rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white to-gray-50/50 p-5 md:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md col-span-1 dark:border-zinc-800 dark:from-zinc-900/60 dark:to-zinc-900/20">
-                        
-                        <div className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-blue-500/10 blur-lg transition-all group-hover:scale-150 dark:bg-blue-500/5" />
-                        
-                        <p className="mb-1 text-[10px] md:text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-zinc-500">
-                            Total Dokumentasi
+                    {/* Stat: Total Sesi */}
+                    <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#1C1F2A]">
+                        <div className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+                            <svg
+                                className="h-4 w-4 text-blue-600 dark:text-blue-400"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                />
+                            </svg>
+                        </div>
+                        <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase dark:text-zinc-500">
+                            Total Sesi
                         </p>
-                        <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-blue-600 dark:text-blue-400">
+                        <p className="mt-2 text-3xl font-black text-gray-900 tabular-nums dark:text-white">
                             {sessions.length}
-                        </h3>
-                        <p className="mt-2 text-[11px] md:text-xs text-gray-500 dark:text-zinc-400 truncate">
-                            Sesi Code Blue tercatat
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                            Semua dokumentasi
                         </p>
                     </div>
 
-                    {/* Box 3: Info Draf Menunggu */}
-                    <div className="group relative flex flex-col justify-center overflow-hidden rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white to-gray-50/50 p-5 md:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md col-span-1 dark:border-zinc-800 dark:from-zinc-900/60 dark:to-zinc-900/20">
-                        
-                        <div className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-amber-500/10 blur-lg transition-all group-hover:scale-150 dark:bg-amber-500/5" />
-                        
-                        <p className="mb-1 text-[10px] md:text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-zinc-500">
-                            Draf Belum Selesai
+                    {/* Stat: Draf */}
+                    <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#1C1F2A]">
+                        <div className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
+                            <svg
+                                className="h-4 w-4 text-amber-500"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                            </svg>
+                        </div>
+                        <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase dark:text-zinc-500">
+                            Draf
                         </p>
-                        <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-amber-500 dark:text-amber-400">
-                            {
-                                sessions.filter((s) => s.status === 'draft')
-                                    .length
-                            }
-                        </h3>
-                        <p className="mt-2 text-[11px] md:text-xs text-gray-500 dark:text-zinc-400 truncate">
-                            Perlu direview & difinalisasi
+                        <p className="mt-2 text-3xl font-black text-amber-500 tabular-nums">
+                            {draftCount}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                            Belum difinalisasi
                         </p>
                     </div>
                 </div>
 
-                {/* --- Daftar Riwayat --- */}
-                <div className="relative flex flex-col flex-1 overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40">
-                    
-                    {/* Header Area Riwayat */}
-                    <div className="mb-4 flex items-center justify-between flex-shrink-0">
-                        <h3 className="flex items-center gap-2.5 text-base font-bold text-gray-800 dark:text-zinc-200">
-                            <div className="rounded-lg bg-blue-50 p-1.5 dark:bg-blue-950/40">
+                {/* ── HISTORY LIST ── */}
+                <div className="rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
                                 <svg
                                     className="h-4 w-4 text-blue-600 dark:text-blue-400"
                                     fill="none"
                                     stroke="currentColor"
+                                    strokeWidth="2.5"
                                     viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
                                 >
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
-                                        strokeWidth={2.5}
                                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                     />
                                 </svg>
                             </div>
-                            Riwayat Tindakan Terbaru
-                        </h3>
-                    </div>
-
-                    {/* Scroll List Item */}
-                    <div className="flex-1 overflow-y-auto pr-1 space-y-3 max-h-[340px] md:max-h-none scrollbar-thin scrollbar-thumb-slate-200">
-                        {sessions.length === 0 ? (
-                            <div className="flex h-48 flex-col items-center justify-center text-center">
-                                <div className="mb-3 rounded-full bg-gray-50 p-3 dark:bg-zinc-800/40">
-                                    <svg className="h-6 w-6 text-gray-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                    </svg>
-                                </div>
-                                <p className="text-sm font-medium text-gray-400 dark:text-zinc-500">
-                                    Belum ada riwayat Code Blue yang dicatat.
+                            <div>
+                                <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+                                    Riwayat Tindakan
+                                </h2>
+                                <p className="text-[11px] text-gray-400 dark:text-zinc-500">
+                                    {sessions.length} sesi tercatat
                                 </p>
                             </div>
-                        ) : (
-                            <>
-                                {sessions.map((session) => (
-                                    <div
-                                        key={session.id}
-                                        className="group/item flex flex-col items-start justify-between rounded-xl border border-gray-100 bg-white p-4 transition-all duration-200 hover:border-blue-100 hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-transparent sm:flex-row sm:items-center dark:border-zinc-800/60 dark:bg-zinc-900/20 dark:hover:border-blue-900/30 dark:hover:from-blue-950/10"
-                                    
+                        </div>
+                        <Link
+                            href="/riwayat"
+                            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10"
+                        >
+                            Lihat semua
+                            <svg
+                                className="h-3.5 w-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </Link>
+                    </div>
+
+                    {/* Items */}
+                    <div className="divide-y divide-gray-50 dark:divide-white/[0.04]">
+                        {sessions.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 text-center">
+                                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 dark:bg-white/5">
+                                    <svg
+                                        className="h-7 w-7 text-gray-300 dark:text-zinc-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
                                     >
-                                        <div className="space-y-1.5">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <Link
-                                                    href={`/draft/${session.id}`}
-                                                    className="text-sm font-bold text-gray-800 transition-colors group-hover/item:text-blue-600 dark:text-zinc-200 dark:group-hover/item:text-blue-400"
-                                                >
-                                                    Sesi #{session.id} -{' '}
-                                                    {session.patient?.name ||
-                                                        'Tanpa Nama'}
-                                                </Link>
-                                                <span
-                                                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase border ${session.status === 'draft' ? 'bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'}`}
-                                                >
-                                                    {session.status}
-                                                </span>
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={1.5}
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                        />
+                                    </svg>
+                                </div>
+                                <p className="text-sm font-semibold text-gray-400 dark:text-zinc-500">
+                                    Belum ada riwayat Code Blue
+                                </p>
+                                <p className="mt-1 text-xs text-gray-300 dark:text-zinc-600">
+                                    Mulai rekaman pertama Anda
+                                </p>
+                                <Link
+                                    href="/record/setup"
+                                    className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-blue-200 hover:bg-blue-700 dark:shadow-none"
+                                >
+                                    Mulai Sekarang
+                                </Link>
+                            </div>
+                        ) : (
+                            sessions.map((session) => {
+                                const isDraft = session.status === 'draft';
+                                const durationMin = session.duration_seconds
+                                    ? Math.floor(session.duration_seconds / 60)
+                                    : null;
+                                const durationSec = session.duration_seconds
+                                    ? session.duration_seconds % 60
+                                    : null;
+
+                                return (
+                                    <Link
+                                        key={session.id}
+                                        href={`/draft/${session.id}`}
+                                        className="group flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[0.02]"
+                                    >
+                                        {/* Left: icon + info */}
+                                        <div className="flex min-w-0 items-center gap-3.5">
+                                            {/* Avatar / icon */}
+                                            <div
+                                                className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${isDraft ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}
+                                            >
+                                                {isDraft ? (
+                                                    <svg
+                                                        className="h-5 w-5 text-amber-500"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                        />
+                                                    </svg>
+                                                ) : (
+                                                    <svg
+                                                        className="h-5 w-5 text-emerald-500"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                        />
+                                                    </svg>
+                                                )}
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-zinc-500">
-                                                <svg className="h-3.5 w-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <span>
-                                                    {new Date(
-                                                        session.created_at,
-                                                    ).toLocaleString('id-ID', {
-                                                        dateStyle: 'long',
-                                                        timeStyle: 'short',
-                                                    })}
-                                                </span>
+
+                                            {/* Text */}
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="truncate text-sm font-bold text-gray-800 transition-colors group-hover:text-blue-600 dark:text-zinc-200 dark:group-hover:text-blue-400">
+                                                        {session.patient
+                                                            ?.name ||
+                                                            'Pasien Tanpa Nama'}
+                                                    </span>
+                                                    <span className="flex-shrink-0 text-xs font-medium text-gray-400 dark:text-zinc-500">
+                                                        #{session.id}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-0.5 flex items-center gap-2">
+                                                    {/* Status badge */}
+                                                    <span
+                                                        className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
+                                                            isDraft
+                                                                ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
+                                                                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                                        }`}
+                                                    >
+                                                        {isDraft
+                                                            ? 'Draf'
+                                                            : 'Selesai'}
+                                                    </span>
+                                                    {/* Date */}
+                                                    <span className="truncate text-[11px] text-gray-400 dark:text-zinc-500">
+                                                        {new Date(
+                                                            session.created_at,
+                                                        ).toLocaleString(
+                                                            'id-ID',
+                                                            {
+                                                                day: 'numeric',
+                                                                month: 'short',
+                                                                year: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            },
+                                                        )}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-1.5 text-xs font-semibold text-gray-600 sm:mt-0 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-400">
-                                            <span className="opacity-90">⏱️ Durasi:</span>{' '}
-                                            <span className="font-mono text-gray-700 dark:text-zinc-300">
-                                                {session.duration_seconds
-                                                    ? `${Math.floor(session.duration_seconds / 60)}m ${session.duration_seconds % 60}s`
-                                                    : '-'}
-                                            </span>
+
+                                        {/* Right: duration + arrow */}
+                                        <div className="flex flex-shrink-0 items-center gap-3">
+                                            {session.duration_seconds ? (
+                                                <div className="hidden items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-1.5 sm:flex dark:border-white/5 dark:bg-white/5">
+                                                    <svg
+                                                        className="h-3.5 w-3.5 text-gray-400 dark:text-zinc-500"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                        />
+                                                    </svg>
+                                                    <span className="font-mono text-xs font-semibold text-gray-600 dark:text-zinc-400">
+                                                        {durationMin}m{' '}
+                                                        {String(
+                                                            durationSec,
+                                                        ).padStart(2, '0')}
+                                                        s
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="hidden text-xs text-gray-300 sm:block dark:text-zinc-600">
+                                                    —
+                                                </span>
+                                            )}
+                                            <svg
+                                                className="h-4 w-4 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-blue-500 dark:text-zinc-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2.5"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M9 5l7 7-7 7"
+                                                />
+                                            </svg>
                                         </div>
-                                    </div>
-                                ))}
-                            </>
+                                    </Link>
+                                );
+                            })
                         )}
                     </div>
                 </div>
@@ -181,14 +364,5 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
         </>
     );
 }
-
-// Dashboard.layout = {
-//     breadcrumbs: [
-//         {
-//             title: 'V-Code',
-//             href: dashboard(),
-//         },
-//     ],
-// };
 
 Dashboard.layout = (page: React.ReactNode) => <AppLayout children={page} />;

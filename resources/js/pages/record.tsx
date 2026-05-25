@@ -31,7 +31,6 @@ type DebugEntry = {
     type: 'info' | 'send' | 'result' | 'silence' | 'error' | 'ws';
 };
 
-// ─── [BARU] Type untuk classify rules dari DB ─────────────────────────────────
 type ClassifyRule = {
     keyword: string;
     match_mode: 'contains' | 'exact' | 'starts_with' | 'regex';
@@ -48,11 +47,7 @@ const WS_RESTART_DELAY = 150;
 const WS_MAX_RESTARTS = 5;
 const WS_COOLDOWN_MS = 2_000;
 
-// ─── [BARU] Fallback rules jika API classify-rules tidak bisa diakses ─────────
-// Dipakai hanya jika fetch ke /record/classify-rules gagal (misalnya offline).
-
 const FALLBACK_CLASSIFY_RULES: ClassifyRule[] = [
-    // EVALUASI — priority 10
     {
         keyword: 'rosc',
         match_mode: 'contains',
@@ -137,7 +132,6 @@ const FALLBACK_CLASSIFY_RULES: ClassifyRule[] = [
         target_field: 'evaluation_plan',
         priority: 10,
     },
-    // PENGKAJIAN — priority 20
     {
         keyword: 'tensi',
         match_mode: 'contains',
@@ -231,21 +225,17 @@ const FALLBACK_CLASSIFY_RULES: ClassifyRule[] = [
     },
 ];
 
-// ─── [BARU] Fungsi classify dynamic (pakai rules dari DB/fallback) ─────────────
-// Diletakkan di luar component agar tidak re-create setiap render.
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function classifyWithRules(
     text: string,
     rules: ClassifyRule[],
 ): { category: string; targetField: keyof AutoFillData | null } {
-    // Jika rules belum dimuat, langsung pakai fallback
     const activeRules = rules.length > 0 ? rules : FALLBACK_CLASSIFY_RULES;
     const lower = text.toLowerCase();
-
     for (const rule of activeRules) {
         const kw = rule.keyword.toLowerCase();
         let matched = false;
-
         switch (rule.match_mode) {
             case 'exact':
                 matched = lower === kw;
@@ -260,22 +250,17 @@ function classifyWithRules(
                     matched = false;
                 }
                 break;
-            default: // 'contains'
+            default:
                 matched = lower.includes(kw);
         }
-
-        if (matched) {
+        if (matched)
             return {
                 category: rule.category,
                 targetField: rule.target_field as keyof AutoFillData | null,
             };
-        }
     }
-
     return { category: 'tindakan', targetField: null };
 }
-
-// ─── Utilitas lainnya (tidak berubah) ────────────────────────────────────────
 
 function isRefinement(a: string, b: string): boolean {
     const normalize = (s: string) =>
@@ -284,29 +269,23 @@ function isRefinement(a: string, b: string): boolean {
             .replace(/[^\w\s]/g, '')
             .replace(/\s+/g, ' ')
             .trim();
-
     const na = normalize(a);
     const nb = normalize(b);
-
     if (
         na === nb ||
         na.startsWith(nb) ||
         nb.startsWith(na) ||
         na.includes(nb) ||
         nb.includes(na)
-    ) {
+    )
         return true;
-    }
-
     const wordsA = new Set(na.split(' '));
     const wordsB = new Set(nb.split(' '));
     let same = 0;
     wordsA.forEach((w) => {
         if (wordsB.has(w)) same++;
     });
-    const similarity = same / Math.max(wordsA.size, wordsB.size);
-
-    return similarity >= 0.5;
+    return same / Math.max(wordsA.size, wordsB.size) >= 0.5;
 }
 
 function pickMime(): string | null {
@@ -315,6 +294,39 @@ function pickMime(): string | null {
             (m) => MediaRecorder.isTypeSupported(m),
         ) ?? null
     );
+}
+
+// ─── Badge & style helpers (luar component agar stabil) ──────────────────────
+
+function catBg(c: string) {
+    if (c === 'pengkajian')
+        return 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/40';
+    if (c === 'evaluasi')
+        return 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800/40';
+    return 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40';
+}
+
+function catDot(c: string) {
+    if (c === 'pengkajian') return 'bg-blue-500';
+    if (c === 'evaluasi') return 'bg-purple-500';
+    return 'bg-emerald-500';
+}
+
+function catBadge(c: string) {
+    if (c === 'pengkajian')
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300';
+    if (c === 'evaluasi')
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300';
+    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300';
+}
+
+function debugColor(type: DebugEntry['type']) {
+    if (type === 'result') return 'text-emerald-600 dark:text-emerald-400';
+    if (type === 'send') return 'text-blue-600 dark:text-blue-400';
+    if (type === 'silence') return 'text-gray-400 dark:text-zinc-600';
+    if (type === 'error') return 'text-red-600 dark:text-red-400';
+    if (type === 'ws') return 'text-amber-600 dark:text-amber-400';
+    return 'text-gray-600 dark:text-zinc-500';
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -339,10 +351,7 @@ export default function Record({
     const [debugLogs, setDebugLogs] = useState<DebugEntry[]>([]);
     const [showDebug, setShowDebug] = useState(false);
     const [googlePending, setGooglePending] = useState<Set<number>>(new Set());
-
-    // [BARU] State untuk classify rules dari DB
     const [classifyRules, setClassifyRules] = useState<ClassifyRule[]>([]);
-
     const [autoFill, setAutoFill] = useState<AutoFillData>({
         assessment_condition: '',
         ttv_time: '',
@@ -360,51 +369,35 @@ export default function Record({
     const debugEndRef = useRef<HTMLDivElement>(null);
     const isRecordingRef = useRef(false);
     const autoFillRef = useRef(autoFill);
-
-    // [BARU] Ref untuk classify rules — agar handleFinalTranscript selalu pakai
-    // versi terbaru tanpa perlu di-include ke dependency array useCallback
     const classifyRulesRef = useRef<ClassifyRule[]>([]);
-
-    // Web Speech
     const recognitionRef = useRef<any>(null);
     const wsRestartCountRef = useRef(0);
     const wsRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
         null,
     );
     const wsCooldownRef = useRef(false);
-
-    // MediaRecorder (untuk Google STT)
     const streamRef = useRef<MediaStream | null>(null);
     const recorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const mimeRef = useRef<string>('');
-
-    // MediaRecorder (untuk VN Full)
     const fullRecorderRef = useRef<MediaRecorder | null>(null);
     const fullChunksRef = useRef<Blob[]>([]);
     const [fullAudioBlob, setFullAudioBlob] = useState<Blob | null>(null);
-
-    // Pending Google requests
     const pendingRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(
         new Map(),
     );
-
-    // Timer utama
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // ── Sync refs ─────────────────────────────────────────────────────────────
     useEffect(() => {
         autoFillRef.current = autoFill;
     }, [autoFill]);
-
-    // [BARU] Sync classifyRulesRef setiap state berubah
     useEffect(() => {
         classifyRulesRef.current = classifyRules;
     }, [classifyRules]);
 
     // ── Init ──────────────────────────────────────────────────────────────────
     useEffect(() => {
-        // Set waktu awal
         const hms = new Date()
             .toLocaleTimeString('id-ID', {
                 hour: '2-digit',
@@ -414,8 +407,6 @@ export default function Record({
             .replace(/\./g, ':');
         setAutoFill((p) => ({ ...p, ttv_time: hms }));
 
-        // [BARU] Fetch classify rules dari web route (bukan api.php)
-        // Route: GET /record/classify-rules → CodeBlueController@classifyRules
         axios
             .get('/record/classify-rules')
             .then((res) => {
@@ -424,18 +415,9 @@ export default function Record({
                 );
                 setClassifyRules(sorted);
                 classifyRulesRef.current = sorted;
-                console.log(
-                    '[V-CODE] Classify rules loaded:',
-                    sorted.length,
-                    'rules',
-                );
             })
-            .catch((err) => {
-                console.warn(
-                    '[V-CODE] Gagal fetch classify rules, pakai fallback:',
-                    err,
-                );
-                // Fallback sudah di-set by default (array kosong → classifyWithRules pakai FALLBACK)
+            .catch(() => {
+                /* Gunakan fallback */
             });
 
         return () => killAll();
@@ -444,7 +426,6 @@ export default function Record({
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs, interimText]);
-
     useEffect(() => {
         if (showDebug)
             debugEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -458,19 +439,15 @@ export default function Record({
                 now.toLocaleTimeString('id-ID', { hour12: false }) +
                 '.' +
                 String(now.getMilliseconds()).padStart(3, '0').slice(0, 2);
-
             setDebugLogs((p) => [...p.slice(-199), { time, msg, type }]);
-
             axios
                 .post('/api/code-blue/debug-log', {
                     patient_id: patient.id,
                     time_mark: time,
-                    type: type,
+                    type,
                     message: msg,
                 })
-                .catch((err) => {
-                    console.error('Gagal mengirim debug log ke server', err);
-                });
+                .catch(() => {});
         },
         [patient.id],
     );
@@ -478,30 +455,32 @@ export default function Record({
     // ── AutoFill ──────────────────────────────────────────────────────────────
     const updateAutoFill = useCallback(
         (field: keyof AutoFillData, text: string, isCorrection = false) => {
+            // Otomatis ubah kata " per " yang diapit angka/spasi menjadi "/"
+            // Contoh: "50 per 100" -> "50/100"
+            let cleanText = text.replace(/\s+per\s+/gi, '/');
+
             setAutoFill((prev) => {
                 const existing = prev[field] as string;
-
-                if (!existing) {
-                    return { ...prev, [field]: text };
-                }
+                if (!existing) return { ...prev, [field]: cleanText };
 
                 const entries = existing.split('. ');
                 const last = entries[entries.length - 1];
 
+                // FIX UTAMA: Jika ini dari Google STT (isCorrection = true),
+                // LANGSUNG timpa kalimat terakhir. Tidak perlu cek kemiripan (isRefinement) lagi.
                 if (isCorrection) {
-                    if (isRefinement(last, text)) {
-                        entries[entries.length - 1] = text;
-                        return { ...prev, [field]: entries.join('. ') };
-                    }
-                }
-
-                if (isRefinement(last, text)) {
-                    entries[entries.length - 1] =
-                        text.length >= last.length ? text : last;
+                    entries[entries.length - 1] = cleanText;
                     return { ...prev, [field]: entries.join('. ') };
                 }
 
-                return { ...prev, [field]: existing + '. ' + text };
+                // Jika ini dari Web Speech (bukan koreksi), baru cek kemiripannya
+                if (isRefinement(last, cleanText)) {
+                    entries[entries.length - 1] =
+                        cleanText.length >= last.length ? cleanText : last;
+                    return { ...prev, [field]: entries.join('. ') };
+                }
+
+                return { ...prev, [field]: existing + '. ' + cleanText };
             });
         },
         [],
@@ -516,7 +495,6 @@ export default function Record({
             timestamp: number,
         ): number => {
             let assignedIdx = -1;
-
             flushSync(() => {
                 setLogs((prev) => {
                     if (prev.length > 0) {
@@ -556,7 +534,6 @@ export default function Record({
                     ];
                 });
             });
-
             return assignedIdx;
         },
         [],
@@ -578,22 +555,19 @@ export default function Record({
     const uploadToGoogle = useCallback(
         async (logIdx: number, chunks: Blob[]) => {
             if (!chunks.length) return;
-
             const mime = mimeRef.current;
             const blob = new Blob(chunks, { type: mime });
-
             if (blob.size < MIN_BLOB_BYTES) {
                 dbg(`Blob ${blob.size}B terlalu kecil — skip`, 'silence');
                 return;
             }
-
-            const kb = (blob.size / 1024).toFixed(0);
             const ext = mime.includes('ogg') ? 'ogg' : 'webm';
-            dbg(`Kirim ${kb}KB → Google (log #${logIdx})`, 'send');
-
+            dbg(
+                `Kirim ${(blob.size / 1024).toFixed(0)}KB → Google (log #${logIdx})`,
+                'send',
+            );
             const form = new FormData();
             form.append('audio', blob, `seg.${ext}`);
-
             try {
                 const t0 = Date.now();
                 const res = await axios.post('/api/transcribe', form, {
@@ -603,26 +577,21 @@ export default function Record({
                 const ms = Date.now() - t0;
                 const text: string = res.data?.text ?? '';
                 const confidence: number = res.data?.confidence ?? 0;
-
                 if (!text) {
                     dbg(`[${ms}ms] Google: (kosong)`, 'silence');
                     return;
                 }
-
                 if (confidence < 0.72) {
                     dbg(
-                        `[${ms}ms] Ditolak (Confidence ${Math.round(confidence * 100)}% < 72%): "${text}" (WS diselamatkan)`,
+                        `[${ms}ms] Ditolak (${Math.round(confidence * 100)}% < 72%): "${text}"`,
                         'error',
                     );
                     return;
                 }
-
-                const confLabel = `[${Math.round(confidence * 100)}%]`;
                 dbg(
-                    `[${ms}ms] Google ${confLabel}: "${text}" (Diterima)`,
+                    `[${ms}ms] Google [${Math.round(confidence * 100)}%]: "${text}"`,
                     'result',
                 );
-
                 const cat =
                     (res.data?.category as string) ??
                     classifyWithRules(text, classifyRulesRef.current).category;
@@ -630,14 +599,13 @@ export default function Record({
                     (res.data?.target_field as keyof AutoFillData | null) ??
                     classifyWithRules(text, classifyRulesRef.current)
                         .targetField;
-
                 patchLog(logIdx, text, cat);
-                if (field) updateAutoFill(field, text);
+                if (field) updateAutoFill(field, text, true);
             } catch (err) {
-                const msg = axios.isAxiosError(err)
-                    ? `HTTP ${err.response?.status ?? err.message}`
-                    : String(err);
-                dbg(`Google error: ${msg}`, 'error');
+                dbg(
+                    `Google error: ${axios.isAxiosError(err) ? `HTTP ${err.response?.status ?? err.message}` : String(err)}`,
+                    'error',
+                );
             } finally {
                 setGooglePending((prev) => {
                     const next = new Set(prev);
@@ -655,57 +623,41 @@ export default function Record({
             const now = new Date();
             const timeMark = now.toLocaleTimeString('id-ID', { hour12: false });
             const ts = now.getTime();
-
-            // [PERUBAHAN] Gunakan classifyWithRules + classifyRulesRef.current
-            // Sebelumnya: const { category, targetField } = classify(text);
             const { category, targetField } = classifyWithRules(
                 text,
                 classifyRulesRef.current,
             );
-
             dbg(`WS final: "${text}"`, 'ws');
-
             const logIdx = insertLog(text, category, timeMark, ts);
             if (targetField) updateAutoFill(targetField, text);
-
             setGooglePending((prev) => new Set(prev).add(logIdx));
-
             let audioSnapshot: Blob[] = [];
-
             if (
                 recorderRef.current &&
                 recorderRef.current.state === 'recording'
             ) {
                 audioSnapshot = [...chunksRef.current];
                 chunksRef.current = [];
-
                 const oldRecorder = recorderRef.current;
                 if (oldRecorder) {
                     oldRecorder.ondataavailable = null;
                     oldRecorder.stop();
                 }
-
                 setTimeout(() => {
                     if (!isRecordingRef.current || !streamRef.current) return;
-
                     const mime = mimeRef.current;
                     const newRecorder = new MediaRecorder(streamRef.current, {
                         mimeType: mime,
                         audioBitsPerSecond: 96_000,
                     });
-
                     newRecorder.ondataavailable = (e) => {
                         if (e.data?.size > 0) chunksRef.current.push(e.data);
                     };
-
                     chunksRef.current = [];
                     newRecorder.start(500);
                     recorderRef.current = newRecorder;
-
-                    dbg('MediaRecorder restarted (fresh header)', 'info');
                 }, 150);
             }
-
             const timeoutId = setTimeout(() => {
                 pendingRef.current.delete(logIdx);
                 setGooglePending((prev) => {
@@ -713,11 +665,8 @@ export default function Record({
                     next.delete(logIdx);
                     return next;
                 });
-                dbg(`Google timeout log #${logIdx} — pertahankan WS`, 'info');
             }, GOOGLE_TIMEOUT_MS);
-
             pendingRef.current.set(logIdx, timeoutId);
-
             uploadToGoogle(logIdx, audioSnapshot).then(() => {
                 const tid = pendingRef.current.get(logIdx);
                 if (tid !== undefined) {
@@ -738,36 +687,28 @@ export default function Record({
             dbg('Web Speech tidak tersedia', 'error');
             return;
         }
-
         const rec = new SR();
         rec.continuous = true;
         rec.interimResults = true;
         rec.lang = 'id-ID';
         rec.maxAlternatives = 1;
-
         rec.onstart = () => {
             wsRestartCountRef.current = 0;
             dbg('WS started', 'ws');
         };
-
         rec.onresult = (event: any) => {
             let interim = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const result = event.results[i];
                 const text = result[0].transcript.trim();
                 if (!text) continue;
-                if (result.isFinal) {
-                    handleFinalTranscript(text);
-                } else {
-                    interim += text;
-                }
+                if (result.isFinal) handleFinalTranscript(text);
+                else interim += text;
             }
             setInterimText(interim);
         };
-
         rec.onerror = (e: any) => {
-            if (e.error === 'no-speech') return;
-            if (e.error === 'aborted') return;
+            if (e.error === 'no-speech' || e.error === 'aborted') return;
             if (e.error === 'not-allowed') {
                 dbg('WS: izin mikrofon dicabut!', 'error');
                 isRecordingRef.current = false;
@@ -776,46 +717,36 @@ export default function Record({
             }
             dbg(`WS error: ${e.error}`, 'error');
         };
-
         rec.onend = () => {
             if (!isRecordingRef.current) return;
-
             wsRestartCountRef.current += 1;
             if (wsRestartCountRef.current >= WS_MAX_RESTARTS) {
                 if (!wsCooldownRef.current) {
                     wsCooldownRef.current = true;
-                    dbg(
-                        `WS cooldown ${WS_COOLDOWN_MS}ms (${wsRestartCountRef.current}x restart)`,
-                        'info',
-                    );
                     wsRestartTimerRef.current = setTimeout(() => {
                         wsCooldownRef.current = false;
                         wsRestartCountRef.current = 0;
                         if (isRecordingRef.current) {
                             dbg('WS resume setelah cooldown', 'ws');
-                            startWebSpeechInstance();
+                            startInstance();
                         }
                     }, WS_COOLDOWN_MS);
                 }
                 return;
             }
-
             wsRestartTimerRef.current = setTimeout(() => {
-                if (isRecordingRef.current) startWebSpeechInstance();
+                if (isRecordingRef.current) startInstance();
             }, WS_RESTART_DELAY);
         };
-
         recognitionRef.current = rec;
-
-        function startWebSpeechInstance() {
+        function startInstance() {
             try {
                 recognitionRef.current?.start();
-            } catch (err) {
-                dbg('WS start skip (already running)', 'info');
+            } catch {
+                dbg('WS start skip', 'info');
             }
         }
-
-        startWebSpeechInstance();
+        startInstance();
     }, [dbg, handleFinalTranscript]);
 
     // ── MediaRecorder ─────────────────────────────────────────────────────────
@@ -823,24 +754,20 @@ export default function Record({
         (stream: MediaStream, mime: string) => {
             mimeRef.current = mime;
             chunksRef.current = [];
-
             const rec = new MediaRecorder(stream, {
                 mimeType: mime,
                 audioBitsPerSecond: 96_000,
             });
-
             rec.ondataavailable = (e) => {
                 if (e.data?.size > 0) chunksRef.current.push(e.data);
             };
-
             rec.start(500);
             recorderRef.current = rec;
-            dbg('MediaRecorder continuous (500ms slice)', 'info');
         },
-        [dbg],
+        [],
     );
 
-    // ── Start / Stop recording ────────────────────────────────────────────────
+    // ── Start / Stop ──────────────────────────────────────────────────────────
     const startRecording = async () => {
         const mime = pickMime();
         if (!mime) {
@@ -849,7 +776,6 @@ export default function Record({
             );
             return;
         }
-
         let stream: MediaStream;
         try {
             stream = await navigator.mediaDevices.getUserMedia({
@@ -869,81 +795,55 @@ export default function Record({
             );
             return;
         }
-
         streamRef.current = stream;
         isRecordingRef.current = true;
         wsRestartCountRef.current = 0;
         wsCooldownRef.current = false;
-
         setIsRecording(true);
         setInterimText('');
         setLogs([]);
         setTimer(0);
         setGooglePending(new Set());
-
         timerRef.current = setInterval(() => setTimer((t) => t + 1), 1_000);
-
         startMediaRecorder(stream, mime);
         startWebSpeech();
-
         fullChunksRef.current = [];
         const fullRec = new MediaRecorder(stream, {
             mimeType: mime,
             audioBitsPerSecond: 96_000,
         });
-
         fullRec.ondataavailable = (e) => {
             if (e.data.size > 0) fullChunksRef.current.push(e.data);
         };
-
         fullRec.onstop = () => {
-            const finalBlob = new Blob(fullChunksRef.current, { type: mime });
-            setFullAudioBlob(finalBlob);
+            setFullAudioBlob(new Blob(fullChunksRef.current, { type: mime }));
         };
-
         fullRec.start();
         fullRecorderRef.current = fullRec;
-
-        dbg('=== Recording dimulai (Hybrid Mode + Full Audio) ===', 'info');
+        dbg('=== Recording dimulai (Hybrid Mode) ===', 'info');
     };
 
     const killAll = useCallback(() => {
         isRecordingRef.current = false;
-
         if (wsRestartTimerRef.current) {
             clearTimeout(wsRestartTimerRef.current);
             wsRestartTimerRef.current = null;
         }
-
-        if (recognitionRef.current) {
-            try {
-                recognitionRef.current.stop();
-            } catch {
-                /* ignore */
-            }
-            recognitionRef.current = null;
-        }
-
-        if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-            recorderRef.current.stop();
-        }
+        try {
+            recognitionRef.current?.stop();
+        } catch {}
+        recognitionRef.current = null;
+        if (recorderRef.current?.state !== 'inactive')
+            recorderRef.current?.stop();
         recorderRef.current = null;
         chunksRef.current = [];
-
-        if (
-            fullRecorderRef.current &&
-            fullRecorderRef.current.state !== 'inactive'
-        ) {
-            fullRecorderRef.current.stop();
-        }
+        if (fullRecorderRef.current?.state !== 'inactive')
+            fullRecorderRef.current?.stop();
         fullRecorderRef.current = null;
-
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
-
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
-
         pendingRef.current.forEach((tid) => clearTimeout(tid));
         pendingRef.current.clear();
     }, []);
@@ -984,187 +884,198 @@ export default function Record({
         );
     };
 
-    // ── Style helpers ─────────────────────────────────────────────────────────
     const fmt = (s: number) =>
         `${Math.floor(s / 60)
             .toString()
             .padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-    const catStyle = (c: string) => {
-        if (c === 'pengkajian')
-            return 'border-l-4 border-blue-500 bg-blue-50/80 dark:border-blue-500 dark:bg-blue-900/20';
-        if (c === 'evaluasi')
-            return 'border-l-4 border-purple-500 bg-purple-50/80 dark:border-purple-500 dark:bg-purple-900/20';
-        return 'border-l-4 border-emerald-500 bg-emerald-50/80 dark:border-emerald-500 dark:bg-emerald-900/20';
-    };
-
-    const badgeStyle = (c: string) => {
-        if (c === 'pengkajian')
-            return 'bg-blue-200 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300';
-        if (c === 'evaluasi')
-            return 'bg-purple-200 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300';
-        return 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300';
-    };
-
-    const debugColor = (type: DebugEntry['type']) => {
-        if (type === 'result') return 'text-green-400';
-        if (type === 'send') return 'text-blue-400';
-        if (type === 'silence') return 'text-gray-500';
-        if (type === 'error') return 'text-red-400';
-        if (type === 'ws') return 'text-yellow-400';
-        return 'text-gray-400';
-    };
-
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ─── Render ───────────────────────────────────────────────────────────────
     return (
-        <div className="flex min-h-screen items-start justify-center bg-slate-200 md:py-8 dark:bg-zinc-900">
-            <Head title="Perekaman Code Blue" />
+        <>
+            <Head title="Perekaman Code Blue — V-Code" />
 
-            <div className="flex min-h-screen w-full max-w-md flex-col overflow-hidden bg-slate-100 md:max-h-[90vh] md:min-h-[850px] md:rounded-3xl md:border md:border-slate-200 md:shadow-2xl dark:bg-zinc-950 dark:md:border-zinc-800">
-                {/* ── Header ── */}
-                <div className="sticky top-0 z-10 flex items-center gap-3 bg-blue-900 px-4 py-3 shadow-md md:rounded-t-2xl">
-                    <button
-                        onClick={() => window.history.back()}
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/10 active:scale-95"
-                        aria-label="Kembali"
-                    >
-                        <svg
-                            className="h-5 w-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+            {/*
+             * Mobile: full-screen, konten di-stack vertikal, mic di fixed bottom bar
+             * Desktop: max-w-lg centered, scrollable
+             */}
+            <div className="flex justify-center">
+                <div className="w-full max-w-lg">
+                    {/* ── PAGE HEADER ── */}
+                    <div className="mb-4 flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => window.history.back()}
+                            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-gray-300 hover:text-gray-700 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400 dark:hover:text-zinc-200"
+                            aria-label="Kembali"
                         >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 19l-7-7 7-7"
-                            />
-                        </svg>
-                    </button>
-                    <h1 className="flex-1 text-center text-base font-bold tracking-wide text-white">
-                        V-CODE
-                    </h1>
-                    {isRecording || timer > 0 ? (
-                        <span
-                            className={`font-mono text-sm font-bold ${isRecording ? 'text-red-300' : 'text-gray-300'}`}
-                        >
-                            {fmt(timer)}
-                        </span>
-                    ) : (
-                        <div className="h-9 w-9" />
-                    )}
-                </div>
+                            <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M15 19l-7-7 7-7"
+                                />
+                            </svg>
+                        </button>
 
-                <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-                    {/* ── Info Pasien ── */}
-                    <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
-                        <div className="flex items-start gap-4 p-4">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-900">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">
+                                Perekaman
+                            </h1>
+                            <p className="truncate text-xs text-gray-400 dark:text-zinc-500">
+                                {incident_type}
+                            </p>
+                        </div>
+
+                        {/* Timer chip */}
+                        {(isRecording || timer > 0) && (
+                            <div
+                                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 ${isRecording ? 'bg-red-50 dark:bg-red-950/30' : 'bg-gray-100 dark:bg-white/5'}`}
+                            >
+                                {isRecording && (
+                                    <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                                )}
+                                <span
+                                    className={`font-mono text-sm font-bold tabular-nums ${isRecording ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-zinc-400'}`}
+                                >
+                                    {fmt(timer)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── PATIENT INFO CARD ── */}
+                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                        <div className="flex items-center gap-3 px-4 py-3.5">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600">
                                 <svg
-                                    className="h-8 w-8 text-white"
+                                    className="h-5 w-5 text-white"
                                     fill="none"
                                     stroke="currentColor"
+                                    strokeWidth="2"
                                     viewBox="0 0 24 24"
                                 >
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
-                                        strokeWidth={1.5}
                                         d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                                     />
                                 </svg>
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs font-semibold tracking-widest text-blue-900 uppercase dark:text-blue-400">
-                                    Code Blue · Hybrid STT
-                                </p>
-                                <h2 className="mt-0.5 truncate text-base font-bold text-gray-900 dark:text-white">
+                                <p className="truncate text-sm font-bold text-gray-900 dark:text-white">
                                     {patient.name}
-                                </h2>
-                                <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
-                                    Web Speech + Google STT koreksi medis
-                                    {/* [BARU] Tampilkan indikator rules loaded */}
-                                    {classifyRules.length > 0 && (
-                                        <span className="ml-1 text-green-500">
-                                            · {classifyRules.length} rules
-                                        </span>
-                                    )}
+                                </p>
+                                <p className="text-xs text-gray-400 dark:text-zinc-500">
+                                    {patient.rm_number}
                                 </p>
                             </div>
-                        </div>
-
-                        <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 dark:border-zinc-800">
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                Status
-                            </span>
-                            <div className="flex items-center gap-1.5">
+                            {/* Status pill */}
+                            <div
+                                className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 ${isRecording ? 'bg-red-50 dark:bg-red-950/30' : 'bg-emerald-50 dark:bg-emerald-950/30'}`}
+                            >
                                 <span
-                                    className={`h-2 w-2 rounded-full ${isRecording ? 'animate-pulse bg-red-500' : 'bg-emerald-400'}`}
+                                    className={`h-1.5 w-1.5 rounded-full ${isRecording ? 'animate-pulse bg-red-500' : 'bg-emerald-500'}`}
                                 />
                                 <span
-                                    className={`text-xs font-semibold ${isRecording ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}
+                                    className={`text-[11px] font-bold ${isRecording ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}
                                 >
-                                    {isRecording
-                                        ? `Merekam · ${fmt(timer)}`
-                                        : 'Siap Merekam'}
+                                    {isRecording ? 'Merekam' : 'Siap'}
                                 </span>
                             </div>
                         </div>
+
+                        {/* Rules indicator */}
+                        {classifyRules.length > 0 && (
+                            <div className="border-t border-gray-100 px-4 py-2 dark:border-white/5">
+                                <p className="text-[11px] text-gray-400 dark:text-zinc-500">
+                                    Hybrid STT aktif ·{' '}
+                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                        {classifyRules.length} rules dimuat
+                                    </span>
+                                </p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* ── Visualizer ── */}
+                    {/* ── AUDIO VISUALIZER (saat merekam) ── */}
                     {isRecording && (
-                        <div className="flex items-center justify-center gap-0.5 rounded-2xl bg-red-50 py-4 dark:bg-red-950/20">
-                            {Array.from({ length: 20 }).map((_, i) => (
+                        <div className="mb-4 flex items-center justify-center gap-0.5 rounded-2xl border border-red-100 bg-red-50 py-5 dark:border-red-900/20 dark:bg-red-950/20">
+                            {Array.from({ length: 28 }).map((_, i) => (
                                 <div
                                     key={i}
-                                    className="w-1 animate-pulse rounded-full bg-red-400 dark:bg-red-500"
+                                    className="w-1 rounded-full bg-red-400 dark:bg-red-500"
                                     style={{
-                                        height: `${Math.random() * 28 + 8}px`,
-                                        animationDelay: `${i * 0.08}s`,
+                                        height: `${Math.random() * 30 + 6}px`,
+                                        animation: `pulse ${0.6 + Math.random() * 0.8}s ease-in-out infinite`,
+                                        animationDelay: `${i * 0.05}s`,
                                     }}
                                 />
                             ))}
                         </div>
                     )}
 
-                    {/* ── Log Transkripsi ── */}
-                    <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
-                        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-zinc-800">
-                            <h3 className="text-sm font-bold text-gray-800 dark:text-white">
-                                Transkripsi Real-time
-                            </h3>
+                    {/* ── TRANSKRIPSI CARD ── */}
+                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-white/5">
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+                                    <svg
+                                        className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                </div>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                    Transkripsi
+                                </span>
+                            </div>
                             {logs.length > 0 && (
-                                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                <span className="rounded-lg bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                                     {logs.length} tindakan
                                 </span>
                             )}
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4">
+                        {/* Log area */}
+                        <div className="max-h-[45vh] min-h-[180px] overflow-y-auto p-4 md:max-h-[360px]">
                             {logs.length === 0 && !interimText ? (
-                                <div className="flex h-full flex-col items-center justify-center py-8 text-center">
-                                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800">
+                                /* Empty state */
+                                <div className="flex h-36 flex-col items-center justify-center text-center">
+                                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 dark:bg-white/5">
                                         <svg
-                                            className="h-6 w-6 text-gray-400"
+                                            className="h-6 w-6 text-gray-300 dark:text-zinc-600"
                                             fill="none"
                                             stroke="currentColor"
+                                            strokeWidth="1.5"
                                             viewBox="0 0 24 24"
                                         >
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
-                                                strokeWidth={1.5}
                                                 d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
                                             />
                                         </svg>
                                     </div>
-                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                    <p className="text-sm font-semibold text-gray-400 dark:text-zinc-500">
                                         Tekan mikrofon untuk mulai
                                     </p>
-                                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
-                                        Muncul instan · koreksi medis otomatis
+                                    <p className="mt-0.5 text-xs text-gray-300 dark:text-zinc-600">
+                                        Transkripsi muncul secara real-time
                                     </p>
                                 </div>
                             ) : (
@@ -1172,12 +1083,17 @@ export default function Record({
                                     {logs.map((log, idx) => (
                                         <div
                                             key={idx}
-                                            className={`flex flex-col gap-1.5 rounded-xl px-3 py-2.5 shadow-sm transition-all duration-300 dark:bg-zinc-800/40 ${catStyle(log.category)}`}
+                                            className={`flex flex-col gap-1 rounded-xl border p-3 transition-all duration-300 ${catBg(log.category)}`}
                                         >
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-mono text-xs font-bold text-gray-500 dark:text-gray-400">
-                                                    {log.time_mark}
-                                                </span>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span
+                                                        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${catDot(log.category)}`}
+                                                    />
+                                                    <span className="font-mono text-[11px] font-bold text-gray-400 dark:text-zinc-500">
+                                                        {log.time_mark}
+                                                    </span>
+                                                </div>
                                                 <div className="flex items-center gap-1.5">
                                                     {googlePending.has(idx) && (
                                                         <span
@@ -1186,24 +1102,25 @@ export default function Record({
                                                         />
                                                     )}
                                                     <span
-                                                        className={`rounded-full px-2 py-0.5 text-[10px] font-black tracking-wider uppercase ${badgeStyle(log.category)}`}
+                                                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ${catBadge(log.category)}`}
                                                     >
                                                         {log.category}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <span className="text-sm leading-snug font-medium text-gray-800 dark:text-gray-100">
+                                            <p className="text-sm leading-snug font-medium text-gray-800 dark:text-zinc-100">
                                                 {log.action_text}
-                                            </span>
+                                            </p>
                                         </div>
                                     ))}
 
+                                    {/* Interim text */}
                                     {interimText && (
-                                        <div className="flex gap-3 rounded-xl border border-dashed border-gray-200 px-3 py-2.5 opacity-60 dark:border-zinc-700">
-                                            <span className="mt-0.5 w-16 shrink-0 font-mono text-xs text-gray-400">
+                                        <div className="flex items-start gap-2 rounded-xl border border-dashed border-gray-200 p-3 opacity-60 dark:border-zinc-700">
+                                            <span className="mt-0.5 flex-shrink-0 font-mono text-[11px] text-gray-400">
                                                 --:--
                                             </span>
-                                            <span className="text-sm text-gray-500 italic dark:text-gray-400">
+                                            <span className="text-sm text-gray-500 italic dark:text-zinc-400">
                                                 {interimText}...
                                             </span>
                                         </div>
@@ -1214,48 +1131,69 @@ export default function Record({
                         </div>
                     </div>
 
-                    {/* ── Debug Panel ── */}
-                    <div className="overflow-hidden rounded-2xl bg-zinc-900 shadow-sm dark:bg-zinc-950">
+                    {/* ── DEBUG PANEL ── */}
+                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all dark:border-white/5 dark:bg-[#1C1F2A]">
                         <button
                             onClick={() => setShowDebug((v) => !v)}
-                            className="flex w-full items-center justify-between px-4 py-2.5"
+                            className="flex w-full items-center justify-between bg-gray-50/50 px-4 py-3 hover:bg-gray-50 dark:bg-white/5 dark:hover:bg-white/10"
                         >
-                            <span className="font-mono text-xs font-bold tracking-widest text-zinc-400 uppercase">
-                                Hybrid STT Log
-                            </span>
+                            <div className="flex items-center gap-2.5">
+                                <svg
+                                    className="h-4 w-4 text-gray-400 dark:text-zinc-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M8 9l3 3-3 3m5 0h3M4 15V9a2 2 0 012-2h12a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2z"
+                                    />
+                                </svg>
+                                <span className="font-mono text-[11px] font-bold tracking-widest text-gray-600 uppercase dark:text-zinc-400">
+                                    Hybrid STT Log
+                                </span>
+                            </div>
                             <div className="flex items-center gap-2">
                                 {debugLogs.length > 0 && (
-                                    <span className="rounded-full bg-zinc-700 px-2 py-0.5 font-mono text-[10px] text-zinc-400">
+                                    <span className="rounded-md bg-gray-200 px-2 py-0.5 font-mono text-[10px] text-gray-600 dark:bg-zinc-800 dark:text-zinc-400">
                                         {debugLogs.length}
                                     </span>
                                 )}
                                 <div
-                                    className={`h-2.5 w-2.5 rounded-full ${
-                                        isRecording
-                                            ? debugLogs[debugLogs.length - 1]
-                                                  ?.type === 'error'
-                                                ? 'bg-red-500'
-                                                : 'bg-green-400'
-                                            : 'bg-zinc-600'
-                                    }`}
+                                    className={`h-2 w-2 rounded-full transition-colors ${isRecording ? (debugLogs[debugLogs.length - 1]?.type === 'error' ? 'bg-red-500' : 'bg-emerald-500') : 'bg-gray-300 dark:bg-zinc-700'}`}
                                 />
+                                <svg
+                                    className={`h-4 w-4 text-gray-400 transition-transform duration-300 dark:text-zinc-500 ${showDebug ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M19 9l-7 7-7-7"
+                                    />
+                                </svg>
                             </div>
                         </button>
 
                         {showDebug && (
-                            <div className="max-h-48 overflow-y-auto border-t border-zinc-800 px-4 py-3">
+                            <div className="max-h-52 overflow-y-auto bg-gray-50 p-4 text-gray-800 shadow-inner dark:bg-[#0A0C10] dark:text-zinc-300">
                                 {debugLogs.length === 0 ? (
-                                    <p className="font-mono text-xs text-zinc-600">
-                                        Belum ada aktivitas...
+                                    <p className="font-mono text-xs text-gray-400 italic dark:text-zinc-600">
+                                        Menunggu aktivitas sistem...
                                     </p>
                                 ) : (
-                                    <div className="space-y-0.5">
+                                    <div className="space-y-1">
                                         {debugLogs.map((e, i) => (
                                             <div
                                                 key={i}
-                                                className="flex gap-2 font-mono text-xs"
+                                                className="flex gap-2.5 font-mono text-[11px] leading-relaxed"
                                             >
-                                                <span className="shrink-0 text-zinc-600">
+                                                <span className="flex-shrink-0 text-gray-400 select-none dark:text-zinc-600">
                                                     [{e.time}]
                                                 </span>
                                                 <span
@@ -1274,100 +1212,118 @@ export default function Record({
                         )}
                     </div>
 
-                    {/* ── Tombol Aksi ── */}
-                    <div className="mt-auto pt-2 pb-2">
-                        {!isRecording && timer > 0 ? (
-                            <button
-                                onClick={saveDraft}
-                                disabled={isProcessing}
-                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-4 text-base font-bold text-white shadow-sm transition hover:bg-green-700 active:scale-95 disabled:opacity-60"
-                            >
-                                {isProcessing ? (
-                                    <>
-                                        <svg
-                                            className="h-5 w-5 animate-spin"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <circle
-                                                className="opacity-25"
-                                                cx="12"
-                                                cy="12"
-                                                r="10"
-                                                stroke="currentColor"
-                                                strokeWidth="4"
-                                            />
-                                            <path
-                                                className="opacity-75"
-                                                fill="currentColor"
-                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                                            />
-                                        </svg>
-                                        Menyimpan...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg
-                                            className="h-5 w-5"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M5 13l4 4L19 7"
-                                            />
-                                        </svg>
-                                        Selesai & Simpan Draft
-                                    </>
-                                )}
-                            </button>
-                        ) : (
-                            <div className="flex flex-col items-center gap-2">
-                                <button
-                                    onClick={toggleRecording}
-                                    aria-label={
-                                        isRecording
-                                            ? 'Hentikan rekaman'
-                                            : 'Mulai rekaman'
-                                    }
-                                    className={`flex h-20 w-20 items-center justify-center rounded-full shadow-md transition-all active:scale-90 ${
-                                        isRecording
-                                            ? 'bg-red-100 ring-4 ring-red-200 dark:bg-red-950 dark:ring-red-900'
-                                            : 'bg-blue-900 hover:bg-blue-800'
-                                    }`}
-                                >
-                                    {isRecording ? (
-                                        <div className="h-7 w-7 rounded-md bg-red-600" />
-                                    ) : (
-                                        <svg
-                                            className="h-9 w-9 text-white"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth={1.8}
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                            />
-                                        </svg>
-                                    )}
-                                </button>
-                                <p className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                                    {isRecording
-                                        ? 'Ketuk untuk berhenti'
-                                        : 'Tekan untuk mulai merekam'}
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                    {/* ── SPACER ── */}
+                    {/* Tinggi spacer ditambah agar tidak tertutup action bar yang baru */}
+                    <div className="h-32 md:h-0" />
                 </div>
             </div>
-        </div>
+
+            {/* ══════════════════════════════════════════════════════════════════
+             * FIXED BOTTOM ACTION BAR
+             * Mobile: always fixed at bottom, full width, above bottom nav
+             * Desktop: static di dalam flow, max-w-lg centered
+             * ══════════════════════════════════════════════════════════════════ */}
+            {/* ══════════════════════════════════════════════════════════════════
+             * FIXED BOTTOM ACTION BAR
+             * Melayang di atas bottom nav mobile (bottom-24)
+             * ══════════════════════════════════════════════════════════════════ */}
+            <div className="fixed right-0 bottom-24 left-0 z-40 flex justify-center px-4 transition-all duration-300 md:relative md:bottom-auto md:mt-6 md:px-0">
+                <div className="w-full max-w-lg rounded-[2rem] border border-white/60 bg-white/80 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none dark:border-white/10 dark:bg-[#1C1F2A]/90">
+                    {/* Selesai & Simpan (setelah rekam berhenti) */}
+                    {!isRecording && timer > 0 ? (
+                        <button
+                            onClick={saveDraft}
+                            disabled={isProcessing}
+                            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-200/50 transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 dark:shadow-blue-900/20"
+                        >
+                            {isProcessing ? (
+                                <>
+                                    <svg
+                                        className="h-5 w-5 animate-spin"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                        />
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                        />
+                                    </svg>
+                                    Menyimpan Data...
+                                </>
+                            ) : (
+                                <>
+                                    <svg
+                                        className="h-5 w-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                    Selesai &amp; Simpan Draft
+                                </>
+                            )}
+                        </button>
+                    ) : (
+                        /* Mic button */
+                        <div className="flex flex-col items-center gap-2">
+                            <button
+                                onClick={toggleRecording}
+                                aria-label={
+                                    isRecording
+                                        ? 'Hentikan rekaman'
+                                        : 'Mulai rekaman'
+                                }
+                                className={`group relative flex h-16 w-16 items-center justify-center rounded-full shadow-lg transition-all duration-300 active:scale-95 ${
+                                    isRecording
+                                        ? 'bg-red-50 ring-4 ring-red-100 dark:bg-red-950/50 dark:ring-red-900/40'
+                                        : 'bg-blue-600 shadow-blue-200/60 hover:bg-blue-700 hover:shadow-blue-300/60 dark:shadow-blue-900/30'
+                                }`}
+                            >
+                                {isRecording ? (
+                                    /* Stop square with gentle pulse */
+                                    <div className="h-6 w-6 rounded-md bg-red-500 transition-transform group-hover:scale-110" />
+                                ) : (
+                                    /* Mic Icon */
+                                    <svg
+                                        className="h-7 w-7 text-white transition-transform group-hover:scale-110"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                        />
+                                    </svg>
+                                )}
+                            </button>
+                            <p className="text-[11px] font-bold tracking-wide text-gray-500 uppercase dark:text-zinc-500">
+                                {isRecording
+                                    ? 'Ketuk untuk berhenti'
+                                    : 'Mulai Merekam'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
     );
 }
 

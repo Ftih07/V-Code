@@ -9,26 +9,49 @@ type Session = {
 type NavbarProps = {
     isSidebarOpen: boolean;
     toggleSidebar: () => void;
+    theme: 'light' | 'dark'; // Tambahan props theme
+    toggleTheme: () => void; // Tambahan props toggle
 };
 
-export default function newNavbar({ isSidebarOpen, toggleSidebar }: NavbarProps) {
+export default function NewNavbar({
+    isSidebarOpen,
+    toggleSidebar,
+    theme,
+    toggleTheme,
+}: NavbarProps) {
     const { url, props } = usePage();
 
-    const sessions = (props.sessions as Session[] || []);
+    const sessions = (props.sessions as Session[]) || [];
 
     const lastDraftSession = sessions
         .filter((session) => session.status === 'draft')
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+        .sort(
+            (a, b) =>
+                new Date(b.created_at).getTime() -
+                new Date(a.created_at).getTime(),
+        )[0];
 
-    const draftLink = lastDraftSession ? `/draft/${lastDraftSession.id}` : '/dashboard';
+    const draftLink = lastDraftSession
+        ? `/draft/${lastDraftSession.id}`
+        : '/dashboard';
 
     const navigationItems = [
         {
             name: 'Beranda',
             href: '/dashboard',
             icon: (
-                <svg className="h-5 w-5 md:h-6 md:w-6" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                <svg
+                    className="h-5 w-5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    />
                 </svg>
             ),
         },
@@ -36,8 +59,18 @@ export default function newNavbar({ isSidebarOpen, toggleSidebar }: NavbarProps)
             name: 'Riwayat',
             href: '/riwayat',
             icon: (
-                <svg className="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                    className="h-5 w-5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                 </svg>
             ),
         },
@@ -45,8 +78,18 @@ export default function newNavbar({ isSidebarOpen, toggleSidebar }: NavbarProps)
             name: 'Profil',
             href: '/settings/profile',
             icon: (
-                <svg className="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <svg
+                    className="h-5 w-5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
                 </svg>
             ),
         },
@@ -61,46 +104,228 @@ export default function newNavbar({ isSidebarOpen, toggleSidebar }: NavbarProps)
 
     return (
         <>
-            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white px-4 pb-safe-bottom md:hidden dark:border-zinc-800 dark:bg-zinc-900">
-                <nav className="flex h-16 items-center justify-around">
-                    {navigationItems.map((item) => {
-                        const active = isUrlActive(item.href);
-                        return (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className={`flex flex-col items-center justify-center gap-0.5 w-20 h-full transition-colors ${
-                                    active
-                                        ? 'text-blue-600 font-bold dark:text-blue-400'
-                                        : 'text-gray-400 font-medium hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300'
-                                }`}
-                            >
-                                <div className={active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-500'}>
-                                    {item.icon}
-                                </div>
-                                <span className="text-[11px] tracking-wide">{item.name}</span>
-                            </Link>
-                        );
-                    })}
-                </nav>
-            </div>
-
-            <aside className={`fixed bottom-0 top-0 left-0 z-40 hidden flex-col border-r border-gray-100 bg-white p-5 md:flex transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
-                <div className={`flex items-center mb-8 pt-2 ${isSidebarOpen ? 'justify-between px-2' : 'justify-center'}`}>
-                    {isSidebarOpen && (
-                        <div>
-                            <h2 className="text-xl font-black tracking-wider text-gray-800 dark:text-zinc-100">V-CODE</h2>
-                            <p className="text-[10px] uppercase font-bold tracking-widest text-blue-600 dark:text-blue-400">EMR Rumah Sakit</p>
-                        </div>
-                    )}
-                    <button onClick={toggleSidebar} className="rounded-xl p-2 text-gray-500 hover:bg-gray-50 dark:text-zinc-400 dark:hover:bg-zinc-800">
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            {/* ── MOBILE TOP HEADER (NEW) ── */}
+            <header className="fixed top-0 right-0 left-0 z-40 flex h-16 items-center justify-between border-b border-gray-100 bg-white/90 px-4 backdrop-blur-md transition-colors duration-300 md:hidden dark:border-white/5 dark:bg-[#141720]/90">
+                {/* Kiri: Logo & Nama App */}
+                <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 shadow-sm">
+                        <svg
+                            className="h-4 w-4 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                            />
                         </svg>
-                    </button>
+                    </div>
+                    <p className="text-sm font-black tracking-widest text-gray-900 dark:text-white">
+                        V-CODE
+                    </p>
                 </div>
 
-                <nav className="flex-1 space-y-1.5">
+                {/* Kanan: Aksi (Theme & Logout) */}
+                <div className="flex items-center gap-1">
+                    {/* Theme Toggle Mobile */}
+                    <button
+                        onClick={toggleTheme}
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-white/10"
+                    >
+                        {theme === 'light' ? (
+                            <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="1.75"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                />
+                            </svg>
+                        ) : (
+                            <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="1.75"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                                />
+                            </svg>
+                        )}
+                    </button>
+
+                    {/* Logout Mobile */}
+                    <Link
+                        href="/logout"
+                        method="post"
+                        as="button"
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                    >
+                        <svg
+                            className="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                            />
+                        </svg>
+                    </Link>
+                </div>
+            </header>
+
+            {/* ── MOBILE BOTTOM NAV ── */}
+            {/* (Tombol theme floating yang lama sudah dihapus dari sini) */}
+            <nav className="fixed right-0 bottom-0 left-0 z-50 md:hidden">
+                <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-white/60 bg-white/90 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-[#1C1F2A]/90">
+                    <div className="flex h-16 items-center justify-around px-2">
+                        {navigationItems.map((item) => {
+                            const active = isUrlActive(item.href);
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className="relative flex h-full w-20 flex-col items-center justify-center gap-1"
+                                >
+                                    {active && (
+                                        <span className="absolute top-2 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-blue-500" />
+                                    )}
+                                    <div
+                                        className={`flex items-center justify-center rounded-xl p-1.5 transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-500'}`}
+                                    >
+                                        {item.icon}
+                                    </div>
+                                    <span
+                                        className={`text-[10px] font-semibold tracking-wide transition-colors ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-500'}`}
+                                    >
+                                        {item.name}
+                                    </span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            </nav>
+
+            {/* ── DESKTOP SIDEBAR ── */}
+            <aside
+                className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-100 bg-white transition-all duration-300 ease-in-out md:flex dark:border-white/5 dark:bg-[#141720] ${
+                    isSidebarOpen ? 'w-64' : 'w-20'
+                }`}
+            >
+                {/* Logo area */}
+                <div
+                    className={`flex h-16 flex-shrink-0 items-center border-b border-gray-100 px-4 dark:border-white/5 ${
+                        isSidebarOpen ? 'justify-between' : 'justify-center'
+                    }`}
+                >
+                    {isSidebarOpen && (
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600">
+                                <svg
+                                    className="h-4 w-4 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                    />
+                                </svg>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-black tracking-widest text-gray-900 dark:text-white">
+                                    V-CODE
+                                </p>
+                                <p className="truncate text-[9px] font-bold tracking-[0.15em] text-blue-500 uppercase dark:text-blue-400">
+                                    EMR Rumah Sakit
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {!isSidebarOpen && (
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600">
+                            <svg
+                                className="h-4 w-4 text-white"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                />
+                            </svg>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={toggleSidebar}
+                        title={isSidebarOpen ? 'Tutup menu' : 'Buka menu'}
+                        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-600 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-zinc-300 ${isSidebarOpen ? '' : 'hidden'}`}
+                    >
+                        <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                            />
+                        </svg>
+                    </button>
+
+                    {!isSidebarOpen && (
+                        <button
+                            onClick={toggleSidebar}
+                            title="Buka menu"
+                            className="absolute top-1/2 -right-3 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-sm hover:text-gray-600 dark:border-white/10 dark:bg-[#1C1F2A] dark:text-zinc-500 dark:hover:text-zinc-300"
+                        >
+                            <svg
+                                className="h-3 w-3"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+
+                {/* Nav items */}
+                <nav className="flex-1 space-y-1 overflow-y-auto p-3">
                     {navigationItems.map((item) => {
                         const active = isUrlActive(item.href);
                         return (
@@ -108,31 +333,110 @@ export default function newNavbar({ isSidebarOpen, toggleSidebar }: NavbarProps)
                                 key={item.name}
                                 href={item.href}
                                 title={!isSidebarOpen ? item.name : undefined}
-                                className={`flex items-center gap-3.5 rounded-xl py-3 text-sm font-bold transition-all duration-200 ${isSidebarOpen ? 'px-4 justify-start' : 'justify-center'} ${
+                                className={`group flex items-center gap-3 rounded-xl py-2.5 text-sm font-semibold transition-all duration-200 ${
+                                    isSidebarOpen
+                                        ? 'px-3'
+                                        : 'justify-center px-0'
+                                } ${
                                     active
-                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
-                                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-200'
+                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200'
                                 }`}
                             >
-                                <div className={active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-500'}>
+                                {active && isSidebarOpen && (
+                                    <span className="absolute left-3 h-5 w-0.5 rounded-full bg-blue-500" />
+                                )}
+                                <span
+                                    className={`flex-shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-zinc-500 dark:group-hover:text-zinc-300'}`}
+                                >
                                     {item.icon}
-                                </div>
-                                {isSidebarOpen && <span>{item.name}</span>}
+                                </span>
+                                {isSidebarOpen && (
+                                    <span className="truncate">
+                                        {item.name}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
                 </nav>
 
-                <div className="pt-4 border-t border-gray-100 dark:border-zinc-800">
+                {/* Bottom Actions: Theme Toggle & Logout */}
+                <div className="flex-shrink-0 space-y-1 border-t border-gray-100 p-3 dark:border-white/5">
+                    <button
+                        onClick={toggleTheme}
+                        title={
+                            !isSidebarOpen
+                                ? theme === 'light'
+                                    ? 'Mode Gelap'
+                                    : 'Mode Terang'
+                                : undefined
+                        }
+                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-500 transition-all duration-200 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200 ${
+                            isSidebarOpen ? 'px-3' : 'justify-center px-0'
+                        }`}
+                    >
+                        <span className="flex-shrink-0 text-gray-400 group-hover:text-gray-600 dark:text-zinc-500 dark:group-hover:text-zinc-300">
+                            {theme === 'light' ? (
+                                <svg
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth="1.75"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                    />
+                                </svg>
+                            ) : (
+                                <svg
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth="1.75"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                                    />
+                                </svg>
+                            )}
+                        </span>
+                        {isSidebarOpen && (
+                            <span>
+                                {theme === 'light'
+                                    ? 'Mode Gelap'
+                                    : 'Mode Terang'}
+                            </span>
+                        )}
+                    </button>
+
                     <Link
                         href="/logout"
                         method="post"
                         as="button"
                         title={!isSidebarOpen ? 'Keluar Sistem' : undefined}
-                        className={`flex w-full items-center gap-3.5 rounded-xl py-3 text-sm font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors text-left dark:text-zinc-400 dark:hover:bg-red-950/20 dark:hover:text-red-400 ${isSidebarOpen ? 'px-4 justify-start' : 'justify-center'}`}
+                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-400 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 ${
+                            isSidebarOpen ? 'px-3' : 'justify-center px-0'
+                        }`}
                     >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        <svg
+                            className="h-5 w-5 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                            />
                         </svg>
                         {isSidebarOpen && <span>Keluar Sistem</span>}
                     </Link>
