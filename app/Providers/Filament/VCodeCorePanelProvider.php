@@ -18,6 +18,9 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\View\PanelsRenderHook;
+use Filament\Support\Facades\FilamentView;
+use Illuminate\Support\Facades\Blade;
 
 class VCodeCorePanelProvider extends PanelProvider
 {
@@ -28,9 +31,24 @@ class VCodeCorePanelProvider extends PanelProvider
             ->id('v-code-core')
             ->path('v-code-core')
             ->login()
+            ->viteTheme('resources/css/filament/v-code-core/theme.css')
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.mobile-bottom-nav'),
+            )
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_START,
+                fn () => view('filament.mobile-brand'),
+            )
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
+                'gray'    => Color::Slate,
+                'success' => Color::Emerald,
+                'warning' => Color::Amber,
+                'danger'  => Color::Rose,
+                'info'    => Color::Sky,
             ])
+            ->sidebarFullyCollapsibleOnDesktop()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
@@ -38,8 +56,8 @@ class VCodeCorePanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                // AccountWidget::class,
+                // FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

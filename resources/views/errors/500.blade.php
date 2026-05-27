@@ -1,47 +1,59 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Server Error - V-CODE</title>
     @vite(['resources/css/app.css'])
 </head>
+<body class="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-10 font-sans antialiased">
 
-<body class="bg-gray-50 flex items-center justify-center min-h-screen px-6 font-sans antialiased text-gray-900">
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden text-center">
-        
-        <div class="bg-blue-900 pt-12 pb-14 relative overflow-hidden">
-            <div class="absolute -bottom-10 left-0 right-0 h-16 bg-white rounded-[100%] scale-x-120"></div>
-            
-            <h1 class="text-7xl font-black text-white tracking-widest relative z-10 drop-shadow-sm">500</h1>
-        </div>
+    <div class="w-full max-w-sm">
 
-        <div class="p-8 pt-4 relative z-20">
-            <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-                    </path>
-                </svg>
+        {{-- Card Utama --}}
+        <div class="overflow-hidden rounded-3xl bg-white shadow-xl border border-gray-100">
+
+            {{-- Header Biru dengan Nomor Error --}}
+            <div class="relative bg-blue-900 px-6 pt-10 pb-16 text-center overflow-hidden">
+                {{-- Decorative circles --}}
+                <div class="absolute -top-6 -left-6 h-24 w-24 rounded-full bg-blue-800/50"></div>
+                <div class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-blue-800/40"></div>
+                <div class="absolute top-4 right-8 h-10 w-10 rounded-full bg-blue-700/40"></div>
+
+                <p class="relative z-10 text-xs font-semibold tracking-widest text-blue-300 uppercase mb-1">V-CODE EMR</p>
+                <h1 class="relative z-10 text-8xl font-black text-white tracking-tight leading-none drop-shadow-sm">500</h1>
+
+                {{-- Wave bottom --}}
+                <div class="absolute bottom-0 left-0 right-0 h-8 bg-white" style="border-radius: 100% 100% 0 0;"></div>
             </div>
 
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Gangguan Server</h2>
-            <p class="text-gray-500 mb-8 text-sm leading-relaxed">
-                Waduh! Terjadi kesalahan internal pada sistem. Tim teknis sedang berusaha memperbaikinya. Silakan coba
-                lagi nanti.
-            </p>
+            {{-- Konten --}}
+            <div class="px-6 pb-8 pt-2 text-center">
+                {{-- Icon Badge --}}
+                <div class="mx-auto -mt-1 mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 shadow-sm">
+                    <svg class="h-7 w-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
 
-            <a href="{{ url('/dashboard') }}"
-                class="flex items-center justify-center gap-2 w-full rounded-xl bg-blue-600 py-3.5 font-bold text-white shadow-md transition-all duration-200 hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                Kembali ke Dashboard
-            </a>
+                <h2 class="text-xl font-bold text-gray-900 mb-1">Gangguan Server</h2>
+                <p class="text-gray-500 text-sm leading-relaxed mb-7 max-w-xs mx-auto">
+                    Waduh! Terjadi kesalahan internal pada sistem. Tim teknis sedang berusaha memperbaikinya. Silakan coba lagi nanti.
+                </p>
+
+                <a href="{{ url('/dashboard') }}"
+                    class="flex items-center justify-center gap-2 w-full rounded-xl bg-blue-900 py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-800 active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Kembali ke Dashboard
+                </a>
+            </div>
         </div>
-    </div>
-</body>
 
+        <p class="mt-5 text-center text-xs text-gray-400">V-CODE · Sistem Dokumentasi Code Blue</p>
+    </div>
+
+</body>
 </html>

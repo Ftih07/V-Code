@@ -92,4 +92,8 @@ Route::get('/auth/google/callback', function () {
     return redirect()->intended('/dashboard');
 });
 
+Route::get('/test-403', function () {
+    abort(503);
+});
+
 require __DIR__.'/settings.php';
