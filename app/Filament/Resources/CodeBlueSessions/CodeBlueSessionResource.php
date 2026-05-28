@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Builder;
 class CodeBlueSessionResource extends Resource
 {
     protected static ?string $model = CodeBlueSession::class;
+    
+    protected static string $view = 'filament.pages.code-blue-sessions';
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedHeart;
 
