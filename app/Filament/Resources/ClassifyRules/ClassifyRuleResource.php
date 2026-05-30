@@ -30,6 +30,16 @@ class ClassifyRuleResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Classify Rules';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'info';
+    }
+
     public static function targetFieldOptions(): array
     {
         return [

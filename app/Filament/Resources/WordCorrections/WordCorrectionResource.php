@@ -30,6 +30,16 @@ class WordCorrectionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Word Corrections';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'info';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return WordCorrectionForm::configure($schema);

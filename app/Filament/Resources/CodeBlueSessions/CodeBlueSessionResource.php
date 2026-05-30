@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 class CodeBlueSessionResource extends Resource
 {
     protected static ?string $model = CodeBlueSession::class;
-    
+
     protected static string $view = 'filament.pages.code-blue-sessions';
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedHeart;
@@ -30,6 +30,22 @@ class CodeBlueSessionResource extends Resource
     protected static ?string $modelLabel = 'Sesi Code Blue';
 
     protected static ?string $pluralModelLabel = 'Sesi Code Blue';
+
+    public static function getNavigationBadge(): ?string
+    {
+        $draftCount = static::getModel()::where('status', 'draft')->count();
+
+        $totalCount = static::getModel()::count();
+
+        return $totalCount > 0 ? "{$draftCount} / {$totalCount}" : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $draftCount = static::getModel()::where('status', 'draft')->count();
+
+        return $draftCount > 0 ? 'warning' : 'success';
+    }
 
     public static function canCreate(): bool
     {

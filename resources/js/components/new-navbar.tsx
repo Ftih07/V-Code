@@ -9,8 +9,8 @@ type Session = {
 type NavbarProps = {
     isSidebarOpen: boolean;
     toggleSidebar: () => void;
-    theme: 'light' | 'dark'; // Tambahan props theme
-    toggleTheme: () => void; // Tambahan props toggle
+    theme: 'light' | 'dark';
+    toggleTheme: () => void;
 };
 
 export default function NewNavbar({
@@ -96,21 +96,18 @@ export default function NewNavbar({
     ];
 
     const isUrlActive = (href: string) => {
-        // Ambil path utamanya saja, abaikan query parameter (?search=dll)
         const currentPath = url.split('?')[0];
-
         if (href === '/dashboard')
             return currentPath === '/dashboard' || currentPath === '/';
         if (href === '/riwayat') return currentPath === '/riwayat';
         if (href === '/settings/profile')
             return currentPath === '/settings/profile';
-
         return currentPath.startsWith(href);
     };
 
     return (
         <>
-            {/* ── MOBILE TOP HEADER (NEW) ── */}
+            {/* ── MOBILE TOP HEADER ── */}
             <header className="fixed top-0 right-0 left-0 z-40 flex h-16 items-center justify-between border-b border-gray-100 bg-white/90 px-4 backdrop-blur-md transition-colors duration-300 md:hidden dark:border-white/5 dark:bg-[#141720]/90">
                 {/* Kiri: Logo & Nama App */}
                 <div className="flex items-center gap-2.5">
@@ -196,50 +193,43 @@ export default function NewNavbar({
                 </div>
             </header>
 
-            {/* ── MOBILE BOTTOM NAV ── */}
-            {/* (Tombol theme floating yang lama sudah dihapus dari sini) */}
-            <nav className="fixed right-0 bottom-0 left-0 z-50 md:hidden">
-                <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-white/60 bg-white/90 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-[#1C1F2A]/90">
-                    <div className="flex h-16 items-center justify-around px-2">
-                        {navigationItems.map((item) => {
-                            const active = isUrlActive(item.href);
-                            return (
-                                <Link
-                                    key={item.name}
-                                    href={item.href}
-                                    className="relative flex h-full w-20 flex-col items-center justify-center gap-1"
+            {/* ── MOBILE BOTTOM FLOATING NAVBAR ── */}
+            <div
+                className="fixed right-0 bottom-5 left-0 z-[999] flex flex-col items-center px-4 md:hidden"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+                {/* KAPSUL NAVBAR BAWAH */}
+                <nav className="flex h-[64px] w-full max-w-sm items-center justify-around rounded-[2rem] border border-white/60 bg-white/85 px-6 shadow-[0_8px_32px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-700/60 dark:bg-slate-900/85 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
+                    {navigationItems.map((item) => {
+                        const active = isUrlActive(item.href);
+                        return (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                // Lebar dibesarkan (w-20) agar area tap lebih luas
+                                className={`flex w-20 flex-col items-center justify-center gap-1 transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}
+                            >
+                                <div
+                                    className={`flex items-center justify-center rounded-2xl p-2 transition-all duration-200 ${active ? 'scale-110 bg-blue-600 text-white shadow-lg shadow-blue-200/50 dark:bg-blue-500 dark:shadow-blue-900/40' : 'bg-transparent'}`}
                                 >
-                                    {active && (
-                                        <span className="absolute top-2 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-blue-500" />
-                                    )}
-                                    <div
-                                        className={`flex items-center justify-center rounded-xl p-1.5 transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-500'}`}
-                                    >
-                                        {item.icon}
-                                    </div>
-                                    <span
-                                        className={`text-[10px] font-semibold tracking-wide transition-colors ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-500'}`}
-                                    >
-                                        {item.name}
-                                    </span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </div>
-            </nav>
+                                    {item.icon}
+                                </div>
+                                <span className="text-[10px] leading-none font-semibold">
+                                    {item.name}
+                                </span>
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </div>
 
-            {/* ── DESKTOP SIDEBAR ── */}
+            {/* ── DESKTOP SIDEBAR (TIDAK ADA YANG DIUBAH) ── */}
             <aside
-                className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-100 bg-white transition-all duration-300 ease-in-out md:flex dark:border-white/5 dark:bg-[#141720] ${
-                    isSidebarOpen ? 'w-64' : 'w-20'
-                }`}
+                className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-100 bg-white transition-all duration-300 ease-in-out md:flex dark:border-white/5 dark:bg-[#141720] ${isSidebarOpen ? 'w-64' : 'w-20'}`}
             >
                 {/* Logo area */}
                 <div
-                    className={`flex h-16 flex-shrink-0 items-center border-b border-gray-100 px-4 dark:border-white/5 ${
-                        isSidebarOpen ? 'justify-between' : 'justify-center'
-                    }`}
+                    className={`flex h-16 flex-shrink-0 items-center border-b border-gray-100 px-4 dark:border-white/5 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}
                 >
                     {isSidebarOpen && (
                         <div className="flex items-center gap-2.5 overflow-hidden">
@@ -378,9 +368,7 @@ export default function NewNavbar({
                                     : 'Mode Terang'
                                 : undefined
                         }
-                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-500 transition-all duration-200 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200 ${
-                            isSidebarOpen ? 'px-3' : 'justify-center px-0'
-                        }`}
+                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-500 transition-all duration-200 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200 ${isSidebarOpen ? 'px-3' : 'justify-center px-0'}`}
                     >
                         <span className="flex-shrink-0 text-gray-400 group-hover:text-gray-600 dark:text-zinc-500 dark:group-hover:text-zinc-300">
                             {theme === 'light' ? (
@@ -427,9 +415,7 @@ export default function NewNavbar({
                         method="post"
                         as="button"
                         title={!isSidebarOpen ? 'Keluar Sistem' : undefined}
-                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-400 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 ${
-                            isSidebarOpen ? 'px-3' : 'justify-center px-0'
-                        }`}
+                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-400 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 ${isSidebarOpen ? 'px-3' : 'justify-center px-0'}`}
                     >
                         <svg
                             className="h-5 w-5 flex-shrink-0"

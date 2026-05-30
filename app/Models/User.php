@@ -13,9 +13,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password', 'google_id'])]
+#[Fillable(['name', 'email', 'password', 'google_id', 'role', 'email_verified_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser // , MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
@@ -25,7 +25,7 @@ class User extends Authenticatable implements FilamentUser // , MustVerifyEmail
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->role === 'admin';
     }
 
     /**

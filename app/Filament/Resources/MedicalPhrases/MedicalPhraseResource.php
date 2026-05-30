@@ -31,6 +31,16 @@ class MedicalPhraseResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Medical Phrases';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'info';
+    }
+
     // Daftar kategori dipusatkan di sini
     public static function categoryOptions(): array
     {

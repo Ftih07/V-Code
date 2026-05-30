@@ -24,6 +24,7 @@ class CodeBlueController extends Controller
     public function index(Request $request)
     {
         $recentSessions = CodeBlueSession::with('patient')
+            ->where('user_id', auth()->id())
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
@@ -33,7 +34,9 @@ class CodeBlueController extends Controller
 
     public function history(Request $request)
     {
-        $query = CodeBlueSession::with('patient')->orderBy('created_at', 'desc');
+        $query = CodeBlueSession::with('patient')
+            ->where('user_id', auth()->id())
+            ->orderBy('created_at', 'desc');
 
         // 1. Filter Pencarian Nama Pasien
         if ($request->filled('search')) {
@@ -171,6 +174,8 @@ class CodeBlueController extends Controller
 
     public function summary(CodeBlueSession $codeBlueSession)
     {
+        abort_if($codeBlueSession->user_id !== auth()->id(), 403, 'Akses ditolak.');
+
         $codeBlueSession->load(['user', 'logs']);
 
         return Inertia::render('record-summary', ['sessionData' => $codeBlueSession]);
@@ -178,6 +183,7 @@ class CodeBlueController extends Controller
 
     public function edit(CodeBlueSession $codeBlueSession)
     {
+        abort_if($codeBlueSession->user_id !== auth()->id(), 403, 'Akses ditolak.');
         $codeBlueSession->load(['patient', 'logs', 'user']);
 
         return Inertia::render('review', ['sessionData' => $codeBlueSession]);
@@ -185,6 +191,8 @@ class CodeBlueController extends Controller
 
     public function update(Request $request, CodeBlueSession $codeBlueSession)
     {
+        abort_if($codeBlueSession->user_id !== auth()->id(), 403, 'Akses ditolak.');
+
         $request->validate([
             'additional_notes' => 'nullable|string',
             'logs' => 'array',

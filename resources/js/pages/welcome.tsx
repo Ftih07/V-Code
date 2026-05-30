@@ -1,393 +1,1152 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import { dashboard, login, register } from '@/routes';
+import { Head, Link, router } from '@inertiajs/react';
+import { useRef, useState, useEffect } from 'react';
 
-export default function Welcome({
-    canRegister = true,
+// ─── Steps ────────────────────────────────────────────────────────────────────
+const steps = [
+    {
+        num: '01',
+        title: 'Setup Sesi',
+        desc: 'Isi data pasien, lokasi, jenis kejadian, dan susunan tim Code Blue dalam hitungan detik.',
+        color: 'blue',
+    },
+    {
+        num: '02',
+        title: 'Mulai Rekam',
+        desc: 'Tekan satu tombol. V-Code langsung mendengarkan dan mentranskripsi setiap ucapan tim secara real-time.',
+        color: 'emerald',
+    },
+    {
+        num: '03',
+        title: 'Koreksi Otomatis',
+        desc: 'Google STT mengoreksi istilah medis di latar belakang. Anda tetap fokus pada pasien.',
+        color: 'purple',
+    },
+    {
+        num: '04',
+        title: 'Review & Finalisasi',
+        desc: 'Setelah sesi, dokter mereview draft, melengkapi TTV, evaluasi, dan mengirim ke EMR.',
+        color: 'amber',
+    },
+];
+
+const colorMap: Record<string, { icon: string; badge: string; dot: string }> = {
+    blue: {
+        icon: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
+        badge: 'bg-blue-600',
+        dot: 'bg-blue-500',
+    },
+    emerald: {
+        icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+        badge: 'bg-emerald-600',
+        dot: 'bg-emerald-500',
+    },
+    purple: {
+        icon: 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400',
+        badge: 'bg-purple-600',
+        dot: 'bg-purple-500',
+    },
+    amber: {
+        icon: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
+        badge: 'bg-amber-500',
+        dot: 'bg-amber-500',
+    },
+};
+
+// ─── Hook: IntersectionObserver-based reveal ──────────────────────────────────
+function useReveal(threshold = 0.15) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+
+        // Respect prefers-reduced-motion
+        const prefersReduced = window.matchMedia(
+            '(prefers-reduced-motion: reduce)',
+        ).matches;
+        if (prefersReduced) {
+            setVisible(true);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { threshold },
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [threshold]);
+
+    return { ref, visible };
+}
+
+// ─── Animated section wrapper ─────────────────────────────────────────────────
+// direction: 'up' | 'left' | 'right' | 'scale'
+function Reveal({
+    children,
+    className = '',
+    direction = 'up',
+    delay = 0,
 }: {
-    canRegister?: boolean;
+    children: React.ReactNode;
+    className?: string;
+    direction?: 'up' | 'left' | 'right' | 'scale';
+    delay?: number;
 }) {
-    const { auth } = usePage().props;
+    const { ref, visible } = useReveal();
+
+    const base = 'transition-all duration-700 ease-out';
+
+    const hidden: Record<string, string> = {
+        up: 'opacity-0 translate-y-10',
+        left: 'opacity-0 -translate-x-10',
+        right: 'opacity-0 translate-x-10',
+        scale: 'opacity-0 scale-95',
+    };
+
+    return (
+        <div
+            ref={ref}
+            className={`${base} ${visible ? 'translate-x-0 translate-y-0 scale-100 opacity-100' : hidden[direction]} ${className}`}
+            style={{ transitionDelay: visible ? `${delay}ms` : '0ms' }}
+        >
+            {children}
+        </div>
+    );
+}
+
+// ─── Parallax blob (moves slightly on scroll via CSS custom property) ─────────
+function ParallaxBlob({
+    className,
+    speed = 0.15,
+}: {
+    className: string;
+    speed?: number;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const prefersReduced = window.matchMedia(
+            '(prefers-reduced-motion: reduce)',
+        ).matches;
+        if (prefersReduced) return;
+
+        let ticking = false;
+        const onScroll = () => {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                if (ref.current) {
+                    const y = window.scrollY * speed;
+                    ref.current.style.transform = `translateY(${y}px)`;
+                }
+                ticking = false;
+            });
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, [speed]);
+
+    return <div ref={ref} className={className} aria-hidden="true" />;
+}
+
+// ─── Staggered children reveal ────────────────────────────────────────────────
+function StaggerReveal({
+    children,
+    className = '',
+    stagger = 80,
+}: {
+    children: React.ReactNode[];
+    className?: string;
+    stagger?: number;
+}) {
+    const { ref, visible } = useReveal(0.1);
+
+    return (
+        <div ref={ref} className={className}>
+            {children.map((child, i) => (
+                <div
+                    key={i}
+                    className="transition-all duration-600 ease-out"
+                    style={{
+                        opacity: visible ? 1 : 0,
+                        transform: visible
+                            ? 'translateY(0) scale(1)'
+                            : 'translateY(24px) scale(0.97)',
+                        transitionDelay: visible ? `${i * stagger}ms` : '0ms',
+                        transitionDuration: '600ms',
+                    }}
+                >
+                    {child}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ─── FAQ Item ─────────────────────────────────────────────────────────────────
+function FaqItem({ q, a }: { q: string; a: string }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div
+            className={`overflow-hidden rounded-2xl border transition-all duration-300 ${open ? 'border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20' : 'border-gray-100 bg-white dark:border-white/5 dark:bg-[#1C1F2A]'}`}
+        >
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+            >
+                <span
+                    className={`text-sm leading-snug font-bold ${open ? 'text-blue-700 dark:text-blue-400' : 'text-gray-800 dark:text-zinc-200'}`}
+                >
+                    {q}
+                </span>
+                <div
+                    className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300 ${open ? 'rotate-45 bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 dark:bg-white/10 dark:text-zinc-500'}`}
+                >
+                    <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 4v16m8-8H4"
+                        />
+                    </svg>
+                </div>
+            </button>
+            <div
+                className={`grid transition-all duration-300 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+            >
+                <div className="overflow-hidden">
+                    <div className="border-t border-blue-100 px-5 pt-3 pb-4 dark:border-blue-900/30">
+                        <p className="text-sm leading-relaxed text-gray-600 dark:text-zinc-400">
+                            {a}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Stat chip ────────────────────────────────────────────────────────────────
+function Stat({
+    value,
+    label,
+    delay = 0,
+}: {
+    value: string;
+    label: string;
+    delay?: number;
+}) {
+    const { ref, visible } = useReveal(0.3);
+    return (
+        <div
+            ref={ref}
+            className="flex flex-col items-center gap-1 text-center transition-all duration-700 ease-out"
+            style={{
+                opacity: visible ? 1 : 0,
+                transform: visible
+                    ? 'translateY(0) scale(1)'
+                    : 'translateY(16px) scale(0.9)',
+                transitionDelay: visible ? `${delay}ms` : '0ms',
+            }}
+        >
+            <span className="text-3xl font-black text-blue-600 tabular-nums dark:text-blue-400">
+                {value}
+            </span>
+            <span className="text-xs font-semibold text-gray-400 dark:text-zinc-500">
+                {label}
+            </span>
+        </div>
+    );
+}
+
+// ─── TypeScript interfaces ────────────────────────────────────────────────────
+interface FeatureProps {
+    title: string;
+    desc: string;
+    color: string;
+    icon: string;
+}
+interface FaqProps {
+    q: string;
+    a: string;
+}
+interface WelcomeProps {
+    auth?: { user?: { name: string } };
+    faqs?: FaqProps[];
+    features?: FeatureProps[];
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+export default function Welcome({
+    auth,
+    faqs = [],
+    features = [],
+}: WelcomeProps) {
+    const isLoggedIn = !!auth?.user;
+
+    const clickCount = useRef(0);
+    const clickTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    const handleLogoClick = () => {
+        clickCount.current += 1;
+        if (clickCount.current === 3) {
+            if (clickTimeout.current) clearTimeout(clickTimeout.current);
+            clickCount.current = 0;
+            window.location.href = '/v-code-core';
+        } else if (clickCount.current === 1) {
+            clickTimeout.current = setTimeout(() => {
+                if (clickCount.current === 1) router.visit('/');
+                clickCount.current = 0;
+            }, 350);
+        }
+    };
+
+    // Waveform bars data (static to avoid hydration mismatch)
+    const waveHeights = [
+        24, 38, 28, 44, 32, 48, 22, 40, 36, 50, 26, 42, 30, 46, 24, 52, 28, 38,
+        44, 30, 48, 22, 40, 34,
+    ];
 
     return (
         <>
-            <Head title="Welcome" />
-            <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8 dark:bg-[#0a0a0a]">
-                <header className="mb-6 w-full max-w-[335px] text-sm not-has-[nav]:hidden lg:max-w-4xl">
-                    <nav className="flex items-center justify-end gap-4">
-                        {auth.user ? (
-                            <Link
-                                href={dashboard()}
-                                className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
-                            >
-                                Dashboard
-                            </Link>
-                        ) : (
-                            <>
-                                <Link
-                                    href={login()}
-                                    className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
+            <Head title="V-CODE — Dokumentasi Code Blue Berbasis Suara" />
+
+            {/* Global scroll animation styles */}
+            <style>{`
+                @media (prefers-reduced-motion: reduce) {
+                    *, *::before, *::after {
+                        animation-duration: 0.01ms !important;
+                        transition-duration: 0.01ms !important;
+                    }
+                }
+                .hero-float {
+                    animation: heroFloat 6s ease-in-out infinite;
+                }
+                .hero-float-slow {
+                    animation: heroFloat 9s ease-in-out infinite reverse;
+                }
+                @keyframes heroFloat {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(-12px); }
+                }
+                .pulse-ring {
+                    animation: pulseRing 2.5s ease-out infinite;
+                }
+                @keyframes pulseRing {
+                    0% { transform: scale(0.95); opacity: 0.6; }
+                    70% { transform: scale(1.4); opacity: 0; }
+                    100% { transform: scale(0.95); opacity: 0; }
+                }
+                .ecg-draw {
+                    stroke-dasharray: 1200;
+                    stroke-dashoffset: 1200;
+                    animation: ecgDraw 2.4s ease forwards;
+                }
+                @keyframes ecgDraw {
+                    to { stroke-dashoffset: 0; }
+                }
+                .waveform-bar {
+                    animation: waveformPulse 1.8s ease-in-out infinite;
+                }
+                @keyframes waveformPulse {
+                    0%, 100% { transform: scaleY(1); }
+                    50% { transform: scaleY(0.4); }
+                }
+            `}</style>
+
+            <div className="min-h-screen overflow-x-hidden bg-[#F5F7FA] dark:bg-[#0F1117]">
+                {/* ══════════════════════════════════════════════════
+                 * NAVBAR
+                 * ══════════════════════════════════════════════════ */}
+                <header className="sticky top-0 z-50 border-b border-gray-100/80 bg-white/90 backdrop-blur-xl dark:border-white/5 dark:bg-[#0F1117]/90">
+                    <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
+                        <div
+                            className="flex cursor-pointer items-center gap-2.5 transition-all duration-200 select-none hover:opacity-80 active:scale-95"
+                            onClick={handleLogoClick}
+                            title="Kembali ke Beranda"
+                        >
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900/30">
+                                <svg
+                                    className="h-4 w-4 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    viewBox="0 0 24 24"
                                 >
-                                    Log in
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                    />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-sm font-black tracking-widest text-gray-900 dark:text-white">
+                                    V-CODE
+                                </p>
+                                <p className="hidden text-[9px] font-bold tracking-[0.15em] text-blue-500 uppercase sm:block">
+                                    EMR Rumah Sakit
+                                </p>
+                            </div>
+                        </div>
+
+                        <nav className="hidden items-center gap-6 md:flex">
+                            {['Fitur', 'Cara Kerja', 'FAQ'].map((item) => (
+                                <a
+                                    key={item}
+                                    href={`#${item.toLowerCase().replace(' ', '-')}`}
+                                    className="text-sm font-semibold text-gray-500 transition-colors duration-200 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white"
+                                >
+                                    {item}
+                                </a>
+                            ))}
+                        </nav>
+
+                        <div className="flex items-center gap-2">
+                            {isLoggedIn ? (
+                                <Link
+                                    href="/dashboard"
+                                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 active:scale-95"
+                                >
+                                    Dashboard
+                                    <svg
+                                        className="h-3.5 w-3.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M9 5l7 7-7 7"
+                                        />
+                                    </svg>
                                 </Link>
-                                {canRegister && (
+                            ) : (
+                                <>
                                     <Link
-                                        href={register()}
-                                        className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                                        href="/login"
+                                        className="rounded-xl px-4 py-2 text-sm font-bold text-gray-600 transition-all duration-200 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-white/10"
                                     >
-                                        Register
+                                        Masuk
                                     </Link>
-                                )}
-                            </>
-                        )}
-                    </nav>
+                                    <Link
+                                        href="/register"
+                                        className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 active:scale-95"
+                                    >
+                                        Mulai Gratis
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </header>
-                <div className="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
-                    <main className="flex w-full max-w-[335px] flex-col-reverse lg:max-w-4xl lg:flex-row">
-                        <div className="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 text-[13px] leading-[20px] shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20 dark:bg-[#161615] dark:text-[#EDEDEC] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]">
-                            <h1 className="mb-1 font-medium">
-                                Let's get started
-                            </h1>
-                            <p className="mb-2 text-[#706f6c] dark:text-[#A1A09A]">
-                                Laravel has an incredibly rich ecosystem.
-                                <br />
-                                We suggest starting with the following.
-                            </p>
-                            <ul className="mb-4 flex flex-col lg:mb-6">
-                                <li className="relative flex items-center gap-4 py-2 before:absolute before:top-1/2 before:bottom-0 before:left-[0.4rem] before:border-l before:border-[#e3e3e0] dark:before:border-[#3E3E3A]">
-                                    <span className="relative bg-white py-1 dark:bg-[#161615]">
-                                        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#e3e3e0] bg-[#FDFDFC] shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-[#dbdbd7] dark:bg-[#3E3E3A]" />
-                                        </span>
+
+                <main>
+                    {/* ══════════════════════════════════════════════════
+                     * HERO — with parallax blobs + floating card
+                     * ══════════════════════════════════════════════════ */}
+                    <section className="relative overflow-hidden px-4 pt-14 pb-16 md:px-6 md:pt-20 md:pb-24">
+                        {/* Parallax background blobs — move at different speeds */}
+                        <ParallaxBlob
+                            speed={0.12}
+                            className="pointer-events-none absolute top-0 left-1/2 -z-10 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/4 rounded-full bg-blue-400/10 blur-3xl dark:bg-blue-600/10"
+                        />
+                        <ParallaxBlob
+                            speed={0.06}
+                            className="pointer-events-none absolute top-20 right-0 -z-10 h-64 w-64 rounded-full bg-purple-300/10 blur-3xl dark:bg-purple-600/10"
+                        />
+                        <ParallaxBlob
+                            speed={0.18}
+                            className="pointer-events-none absolute bottom-0 left-0 -z-10 h-48 w-48 rounded-full bg-emerald-300/10 blur-3xl dark:bg-emerald-700/10"
+                        />
+
+                        {/* ECG line background decoration */}
+                        <div className="pointer-events-none absolute inset-x-0 top-10 overflow-hidden opacity-[0.06] dark:opacity-[0.04]">
+                            <svg
+                                viewBox="0 0 1200 80"
+                                className="w-full"
+                                preserveAspectRatio="none"
+                            >
+                                <path
+                                    className="ecg-draw"
+                                    d="M0 40 L180 40 L210 40 L220 8 L232 72 L240 8 L248 72 L256 40 L280 40 L480 40 L510 40 L520 8 L532 72 L540 8 L548 72 L556 40 L580 40 L780 40 L810 40 L820 8 L832 72 L840 8 L848 72 L856 40 L880 40 L1200 40"
+                                    fill="none"
+                                    stroke="#2563EB"
+                                    strokeWidth="2.5"
+                                />
+                            </svg>
+                        </div>
+
+                        <div className="mx-auto max-w-4xl text-center">
+                            {/* Eyebrow — fade up */}
+                            <Reveal direction="up" delay={0}>
+                                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 dark:border-blue-900/40 dark:bg-blue-950/30">
+                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
+                                    <span className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                                        Dokumentasi Code Blue · Hybrid STT
                                     </span>
-                                    <span>
-                                        Read the
-                                        <a
-                                            href="https://laravel.com/docs"
-                                            target="_blank"
-                                            className="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
-                                        >
-                                            <span>Documentation</span>
+                                </div>
+                            </Reveal>
+
+                            {/* Headline — fade up, slight delay */}
+                            <Reveal direction="up" delay={80}>
+                                <h1 className="mb-4 text-4xl leading-tight font-black tracking-tight text-gray-900 md:text-6xl dark:text-white">
+                                    Fokus pada{' '}
+                                    <span className="relative inline-block">
+                                        <span className="relative z-10 text-blue-600 dark:text-blue-400">
+                                            Pasien
+                                        </span>
+                                        <span className="absolute right-0 bottom-1 left-0 -z-10 h-3 rounded bg-blue-100 dark:bg-blue-900/40" />
+                                    </span>
+                                    ,<br className="hidden sm:block" />
+                                    Bukan pada{' '}
+                                    <span className="text-gray-400 dark:text-zinc-500">
+                                        Formulir
+                                    </span>
+                                </h1>
+                            </Reveal>
+
+                            {/* Subheading */}
+                            <Reveal direction="up" delay={160}>
+                                <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-gray-500 md:text-lg dark:text-zinc-400">
+                                    V-Code merekam, mengklasifikasikan, dan
+                                    mendokumentasikan setiap tindakan Code Blue
+                                    secara real-time hanya dengan suara Anda.
+                                    Tidak ada ketik, tidak ada distraksi.
+                                </p>
+                            </Reveal>
+
+                            {/* CTA buttons */}
+                            <Reveal direction="up" delay={240}>
+                                <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                                    <Link
+                                        href={
+                                            isLoggedIn
+                                                ? '/record/setup'
+                                                : '/register'
+                                        }
+                                        className="group flex w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 px-7 py-4 text-base font-bold text-white shadow-lg shadow-blue-200/60 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200/70 active:scale-[0.98] sm:w-auto dark:shadow-blue-900/30"
+                                    >
+                                        {/* Mic icon with pulse ring */}
+                                        <span className="relative flex h-5 w-5 items-center justify-center">
+                                            <span className="pulse-ring absolute inset-0 rounded-full bg-white/30" />
                                             <svg
-                                                width={10}
-                                                height={11}
-                                                viewBox="0 0 10 11"
+                                                className="relative h-5 w-5"
                                                 fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-2.5 w-2.5"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                viewBox="0 0 24 24"
                                             >
                                                 <path
-                                                    d="M7.70833 6.95834V2.79167H3.54167M2.5 8L7.5 3.00001"
-                                                    stroke="currentColor"
-                                                    strokeLinecap="square"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
                                                 />
                                             </svg>
-                                        </a>
-                                    </span>
-                                </li>
-                                <li className="relative flex items-center gap-4 py-2 before:absolute before:top-0 before:bottom-1/2 before:left-[0.4rem] before:border-l before:border-[#e3e3e0] dark:before:border-[#3E3E3A]">
-                                    <span className="relative bg-white py-1 dark:bg-[#161615]">
-                                        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#e3e3e0] bg-[#FDFDFC] shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-[#dbdbd7] dark:bg-[#3E3E3A]" />
                                         </span>
-                                    </span>
-                                    <span>
-                                        Watch video tutorials at
-                                        <a
-                                            href="https://laracasts.com"
-                                            target="_blank"
-                                            className="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
-                                        >
-                                            <span>Laracasts</span>
-                                            <svg
-                                                width={10}
-                                                height={11}
-                                                viewBox="0 0 10 11"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-2.5 w-2.5"
-                                            >
-                                                <path
-                                                    d="M7.70833 6.95834V2.79167H3.54167M2.5 8L7.5 3.00001"
-                                                    stroke="currentColor"
-                                                    strokeLinecap="square"
-                                                />
-                                            </svg>
-                                        </a>
-                                    </span>
-                                </li>
-                            </ul>
-                            <ul className="flex gap-3 text-sm leading-normal">
-                                <li>
+                                        Mulai Perekaman
+                                    </Link>
                                     <a
-                                        href="https://cloud.laravel.com"
-                                        target="_blank"
-                                        className="inline-block rounded-sm border border-black bg-[#1b1b18] px-5 py-1.5 text-sm leading-normal text-white hover:border-black hover:bg-black dark:border-[#eeeeec] dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:border-white dark:hover:bg-white"
+                                        href="#cara-kerja"
+                                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-7 py-4 text-base font-bold text-gray-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md sm:w-auto dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-white/10"
                                     >
-                                        Deploy now
+                                        Lihat Cara Kerja
+                                        <svg
+                                            className="h-4 w-4 transition-transform duration-200 group-hover:translate-y-0.5"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2.5"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M19 9l-7 7-7-7"
+                                            />
+                                        </svg>
                                     </a>
-                                </li>
-                            </ul>
+                                </div>
+                            </Reveal>
+
+                            <Reveal direction="up" delay={300}>
+                                <p className="mt-5 text-xs text-gray-400 dark:text-zinc-600">
+                                    Tidak perlu kartu kredit · Berjalan di
+                                    infrastruktur RS Anda
+                                </p>
+                            </Reveal>
                         </div>
-                        <div className="relative -mb-px aspect-[335/364] w-full shrink-0 overflow-hidden rounded-t-lg bg-[#fff2f2] lg:mb-0 lg:-ml-px lg:aspect-auto lg:w-[438px] lg:rounded-t-none lg:rounded-r-lg dark:bg-[#1D0002]">
-                            {/* Laravel Logo */}
-                            <svg
-                                className="w-full max-w-none translate-y-0 text-[#F53003] opacity-100 transition-all duration-750 dark:text-[#F61500] starting:opacity-0 motion-safe:starting:translate-y-6"
-                                viewBox="0 0 438 104"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M17.2036 -3H0V102.197H49.5189V86.7187H17.2036V-3Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M110.256 41.6337C108.061 38.1275 104.945 35.3731 100.905 33.3681C96.8667 31.3647 92.8016 30.3618 88.7131 30.3618C83.4247 30.3618 78.5885 31.3389 74.201 33.2923C69.8111 35.2456 66.0474 37.928 62.9059 41.3333C59.7643 44.7401 57.3198 48.6726 55.5754 53.1293C53.8287 57.589 52.9572 62.274 52.9572 67.1813C52.9572 72.1925 53.8287 76.8995 55.5754 81.3069C57.3191 85.7173 59.7636 89.6241 62.9059 93.0293C66.0474 96.4361 69.8119 99.1155 74.201 101.069C78.5885 103.022 83.4247 103.999 88.7131 103.999C92.8016 103.999 96.8667 102.997 100.905 100.994C104.945 98.9911 108.061 96.2359 110.256 92.7282V102.195H126.563V32.1642H110.256V41.6337ZM108.76 75.7472C107.762 78.4531 106.366 80.8078 104.572 82.8112C102.776 84.8161 100.606 86.4183 98.0637 87.6206C95.5202 88.823 92.7004 89.4238 89.6103 89.4238C86.5178 89.4238 83.7252 88.823 81.2324 87.6206C78.7388 86.4183 76.5949 84.8161 74.7998 82.8112C73.004 80.8078 71.6319 78.4531 70.6856 75.7472C69.7356 73.0421 69.2644 70.1868 69.2644 67.1821C69.2644 64.1758 69.7356 61.3205 70.6856 58.6154C71.6319 55.9102 73.004 53.5571 74.7998 51.5522C76.5949 49.5495 78.738 47.9451 81.2324 46.7427C83.7252 45.5404 86.5178 44.9396 89.6103 44.9396C92.7012 44.9396 95.5202 45.5404 98.0637 46.7427C100.606 47.9451 102.776 49.5487 104.572 51.5522C106.367 53.5571 107.762 55.9102 108.76 58.6154C109.756 61.3205 110.256 64.1758 110.256 67.1821C110.256 70.1868 109.756 73.0421 108.76 75.7472Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M242.805 41.6337C240.611 38.1275 237.494 35.3731 233.455 33.3681C229.416 31.3647 225.351 30.3618 221.262 30.3618C215.974 30.3618 211.138 31.3389 206.75 33.2923C202.36 35.2456 198.597 37.928 195.455 41.3333C192.314 44.7401 189.869 48.6726 188.125 53.1293C186.378 57.589 185.507 62.274 185.507 67.1813C185.507 72.1925 186.378 76.8995 188.125 81.3069C189.868 85.7173 192.313 89.6241 195.455 93.0293C198.597 96.4361 202.361 99.1155 206.75 101.069C211.138 103.022 215.974 103.999 221.262 103.999C225.351 103.999 229.416 102.997 233.455 100.994C237.494 98.9911 240.611 96.2359 242.805 92.7282V102.195H259.112V32.1642H242.805V41.6337ZM241.31 75.7472C240.312 78.4531 238.916 80.8078 237.122 82.8112C235.326 84.8161 233.156 86.4183 230.614 87.6206C228.07 88.823 225.251 89.4238 222.16 89.4238C219.068 89.4238 216.275 88.823 213.782 87.6206C211.289 86.4183 209.145 84.8161 207.35 82.8112C205.554 80.8078 204.182 78.4531 203.236 75.7472C202.286 73.0421 201.814 70.1868 201.814 67.1821C201.814 64.1758 202.286 61.3205 203.236 58.6154C204.182 55.9102 205.554 53.5571 207.35 51.5522C209.145 49.5495 211.288 47.9451 213.782 46.7427C216.275 45.5404 219.068 44.9396 222.16 44.9396C225.251 44.9396 228.07 45.5404 230.614 46.7427C233.156 47.9451 235.326 49.5487 237.122 51.5522C238.917 53.5571 240.312 55.9102 241.31 58.6154C242.306 61.3205 242.806 64.1758 242.806 67.1821C242.805 70.1868 242.305 73.0421 241.31 75.7472Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M438 -3H421.694V102.197H438V-3Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M139.43 102.197H155.735V48.2834H183.712V32.1665H139.43V102.197Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M324.49 32.1665L303.995 85.794L283.498 32.1665H266.983L293.748 102.197H314.242L341.006 32.1665H324.49Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M376.571 30.3656C356.603 30.3656 340.797 46.8497 340.797 67.1828C340.797 89.6597 356.094 104 378.661 104C391.29 104 399.354 99.1488 409.206 88.5848L398.189 80.0226C398.183 80.031 389.874 90.9895 377.468 90.9895C363.048 90.9895 356.977 79.3111 356.977 73.269H411.075C413.917 50.1328 398.775 30.3656 376.571 30.3656ZM357.02 61.0967C357.145 59.7487 359.023 43.3761 376.442 43.3761C393.861 43.3761 395.978 59.7464 396.099 61.0967H357.02Z"
-                                    fill="currentColor"
-                                />
-                            </svg>
 
-                            {/* 13 */}
-                            <svg
-                                className="relative -mt-[6.6rem] -ml-8 w-[438px] max-w-none [--stroke-color:#1B1B18] lg:ml-0 dark:[--stroke-color:#FF750F]"
-                                viewBox="0 0 440 392"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <g className="text-[#1B1B18] opacity-100 mix-blend-darken transition-all delay-300 duration-750 dark:text-black dark:mix-blend-normal starting:opacity-0">
-                                    <mask
-                                        id="path-1-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="-0.328613"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="-0.328613"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z" />
-                                        <path d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-1-mask)"
-                                    />
-                                    <path
-                                        d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-1-mask)"
-                                    />
-                                </g>
+                        {/* ── HERO PREVIEW CARD — floating animation ── */}
+                        <Reveal direction="scale" delay={400}>
+                            <div className="mx-auto mt-12 max-w-3xl md:mt-16">
+                                <div
+                                    className="hero-float overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl shadow-gray-200/80 dark:border-white/10 dark:bg-[#1C1F2A] dark:shadow-black/40"
+                                    style={{ transformStyle: 'preserve-3d' }}
+                                >
+                                    {/* Fake browser bar */}
+                                    <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50/80 px-4 py-3 dark:border-white/5 dark:bg-white/[0.03]">
+                                        <div className="flex gap-1.5">
+                                            <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                                            <div className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                        </div>
+                                        <div className="mx-auto flex items-center gap-2 rounded-lg bg-white px-3 py-1 text-xs text-gray-400 shadow-sm dark:bg-white/10 dark:text-zinc-500">
+                                            <svg
+                                                className="h-3 w-3"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                />
+                                            </svg>
+                                            v-code.digitify.my.id
+                                        </div>
+                                        <div className="w-12" />
+                                    </div>
 
-                                <g className="text-[#F3BEC7] opacity-100 transition-all delay-400 duration-750 dark:text-[#4B0600] starting:opacity-0 motion-safe:starting:-translate-x-[26px]">
-                                    <mask
-                                        id="path-2-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="25.3357"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="25.3357"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z" />
-                                        <path d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-2-mask)"
-                                    />
-                                    <path
-                                        d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-2-mask)"
-                                    />
-                                </g>
+                                    <div className="overflow-hidden rounded-b-3xl">
+                                        <video
+                                            className="w-full"
+                                            autoPlay
+                                            muted
+                                            loop
+                                            playsInline
+                                        >
+                                            <source
+                                                src="/assets/demo.mp4"
+                                                type="video/mp4"
+                                            />
+                                        </video>
+                                    </div>
+                                </div>
+                            </div>
+                        </Reveal>
+                    </section>
 
-                                <g className="text-[#F8B803] opacity-100 mix-blend-color transition-all delay-400 duration-750 dark:text-[#391800] dark:mix-blend-hard-light starting:opacity-0 motion-safe:starting:-translate-x-[51px]">
-                                    <mask
-                                        id="path-3-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="51"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="51"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z" />
-                                        <path d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-3-mask)"
-                                    />
-                                    <path
-                                        d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-3-mask)"
-                                    />
-                                </g>
-
-                                <g className="text-[#F3BEC7] opacity-100 mix-blend-multiply transition-all delay-400 duration-750 dark:text-[#733000] dark:mix-blend-normal starting:opacity-0 motion-safe:starting:-translate-x-[78px]">
-                                    <mask
-                                        id="path-4-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="76.6643"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="76.6643"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z" />
-                                        <path d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-4-mask)"
-                                    />
-                                    <path
-                                        d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-4-mask)"
-                                    />
-                                </g>
-
-                                <g className="text-[#F3BEC7] opacity-100 mix-blend-hard-light transition-all delay-400 duration-750 dark:text-[#4B0600] starting:opacity-0 motion-safe:starting:-translate-x-[102px]">
-                                    <mask
-                                        id="path-5-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="102.329"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="102.329"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z" />
-                                        <path d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-5-mask)"
-                                    />
-                                    <path
-                                        d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-5-mask)"
-                                    />
-                                </g>
-                            </svg>
-                            <div className="absolute inset-0 rounded-t-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-t-none lg:rounded-r-lg dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"></div>
+                    {/* ══════════════════════════════════════════════════
+                     * STATS BAR — staggered scale-in
+                     * ══════════════════════════════════════════════════ */}
+                    <section className="border-y border-gray-100 bg-white px-4 py-10 dark:border-white/5 dark:bg-[#141720]">
+                        <div className="mx-auto grid max-w-3xl grid-cols-2 gap-8 md:grid-cols-4">
+                            <Stat
+                                value="< 3s"
+                                label="Transkripsi muncul"
+                                delay={0}
+                            />
+                            <Stat
+                                value="97%"
+                                label="Akurasi medis"
+                                delay={80}
+                            />
+                            <Stat
+                                value="1 ketuk"
+                                label="Mulai rekaman"
+                                delay={160}
+                            />
+                            <Stat
+                                value="0 ketik"
+                                label="Saat resusitasi"
+                                delay={240}
+                            />
                         </div>
-                    </main>
-                </div>
-                <div className="hidden h-14.5 lg:block"></div>
+                    </section>
+
+                    {/* ══════════════════════════════════════════════════
+                     * ABOUT — left/right opposing reveals
+                     * ══════════════════════════════════════════════════ */}
+                    <section
+                        id="tentang"
+                        className="px-4 py-16 md:px-6 md:py-24"
+                    >
+                        <div className="mx-auto max-w-4xl">
+                            <div className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+                                <Reveal direction="left">
+                                    <div>
+                                        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 dark:border-blue-900/40 dark:bg-blue-950/30">
+                                            <span className="text-[11px] font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
+                                                Tentang V-Code
+                                            </span>
+                                        </div>
+                                        <h2 className="mb-4 text-2xl leading-tight font-black tracking-tight text-gray-900 md:text-3xl dark:text-white">
+                                            Dirancang untuk Momen
+                                            <br />
+                                            yang Tidak Boleh Salah
+                                        </h2>
+                                        <p className="mb-4 text-sm leading-relaxed text-gray-500 dark:text-zinc-400">
+                                            Resusitasi Code Blue berlangsung
+                                            dalam hitungan menit. Setiap detik
+                                            berarti. Tim medis tidak bisa
+                                            mengalihkan perhatian untuk mengetik
+                                            catatan — namun dokumentasi yang
+                                            akurat adalah kewajiban hukum dan
+                                            medis.
+                                        </p>
+                                        <p className="text-sm leading-relaxed text-gray-500 dark:text-zinc-400">
+                                            V-Code hadir sebagai asisten
+                                            dokumentasi suara yang bekerja di
+                                            latar belakang. Cukup bicara seperti
+                                            biasa — sistem akan mendengar,
+                                            memahami konteks medis, dan menyusun
+                                            catatan terstruktur secara otomatis.
+                                        </p>
+                                    </div>
+                                </Reveal>
+
+                                <Reveal direction="right" delay={100}>
+                                    <div className="space-y-3">
+                                        {/* Before */}
+                                        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 dark:border-red-900/20 dark:bg-red-950/20">
+                                            <p className="mb-2 text-[11px] font-bold tracking-widest text-red-500 uppercase">
+                                                Sebelum V-Code
+                                            </p>
+                                            <div className="space-y-1.5 text-sm text-red-700 dark:text-red-400">
+                                                {[
+                                                    'Perawat mencatat manual di kertas',
+                                                    'Data sering tidak lengkap atau salah waktu',
+                                                    'Alih perhatian dari pasien ke formulir',
+                                                    'Rekap membutuhkan waktu lama setelah sesi',
+                                                ].map((item) => (
+                                                    <div
+                                                        key={item}
+                                                        className="flex items-start gap-2"
+                                                    >
+                                                        <svg
+                                                            className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-red-400"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2.5"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                d="M6 18L18 6M6 6l12 12"
+                                                            />
+                                                        </svg>
+                                                        {item}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {/* After */}
+                                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 dark:border-emerald-900/20 dark:bg-emerald-950/20">
+                                            <p className="mb-2 text-[11px] font-bold tracking-widest text-emerald-600 uppercase dark:text-emerald-400">
+                                                Dengan V-Code
+                                            </p>
+                                            <div className="space-y-1.5 text-sm text-emerald-800 dark:text-emerald-300">
+                                                {[
+                                                    'Dokumentasi otomatis via suara',
+                                                    'Timestamping akurat setiap tindakan',
+                                                    'Tim tetap fokus 100% pada pasien',
+                                                    'Draft siap review dalam hitungan detik',
+                                                ].map((item) => (
+                                                    <div
+                                                        key={item}
+                                                        className="flex items-start gap-2"
+                                                    >
+                                                        <svg
+                                                            className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-500"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="3"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                d="M5 13l4 4L19 7"
+                                                            />
+                                                        </svg>
+                                                        {item}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Reveal>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* ══════════════════════════════════════════════════
+                     * FEATURES — staggered grid reveal
+                     * ══════════════════════════════════════════════════ */}
+                    <section
+                        id="fitur"
+                        className="bg-white px-4 py-16 md:px-6 md:py-24 dark:bg-[#141720]"
+                    >
+                        <div className="mx-auto max-w-5xl">
+                            <Reveal direction="up">
+                                <div className="mb-10 text-center md:mb-14">
+                                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 dark:border-blue-900/40 dark:bg-blue-950/30">
+                                        <span className="text-[11px] font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
+                                            Fitur Unggulan
+                                        </span>
+                                    </div>
+                                    <h2 className="text-2xl font-black tracking-tight text-gray-900 md:text-3xl dark:text-white">
+                                        Semua yang Dibutuhkan Tim Medis
+                                    </h2>
+                                    <p className="mx-auto mt-3 max-w-xl text-sm text-gray-500 dark:text-zinc-400">
+                                        Setiap fitur dirancang bersama tenaga
+                                        medis untuk memastikan V-Code
+                                        benar-benar membantu — bukan menambah
+                                        beban kerja.
+                                    </p>
+                                </div>
+                            </Reveal>
+
+                            <StaggerReveal
+                                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                                stagger={70}
+                            >
+                                {features.map((f) => {
+                                    const c =
+                                        colorMap[f.color] || colorMap['blue'];
+                                    return (
+                                        <div
+                                            key={f.title}
+                                            className="group rounded-2xl border border-gray-100 bg-[#F5F7FA] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-100/50 dark:border-white/5 dark:bg-[#1C1F2A] dark:hover:shadow-blue-900/20"
+                                        >
+                                            <div
+                                                className={`mb-3.5 inline-flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 ${c.icon}`}
+                                                dangerouslySetInnerHTML={{
+                                                    __html: f.icon,
+                                                }}
+                                            />
+                                            <h3 className="mb-1.5 text-sm font-bold text-gray-900 dark:text-white">
+                                                {f.title}
+                                            </h3>
+                                            <p className="text-xs leading-relaxed text-gray-500 dark:text-zinc-400">
+                                                {f.desc}
+                                            </p>
+                                        </div>
+                                    );
+                                })}
+                            </StaggerReveal>
+                        </div>
+                    </section>
+
+                    {/* ══════════════════════════════════════════════════
+                     * HOW IT WORKS — staggered steps
+                     * ══════════════════════════════════════════════════ */}
+                    <section
+                        id="cara-kerja"
+                        className="px-4 py-16 md:px-6 md:py-24"
+                    >
+                        <div className="mx-auto max-w-5xl">
+                            <Reveal direction="up">
+                                <div className="mb-10 text-center md:mb-14">
+                                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 dark:border-blue-900/40 dark:bg-blue-950/30">
+                                        <span className="text-[11px] font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
+                                            Cara Kerja
+                                        </span>
+                                    </div>
+                                    <h2 className="text-2xl font-black tracking-tight text-gray-900 md:text-3xl dark:text-white">
+                                        4 Langkah, Satu Tujuan
+                                    </h2>
+                                    <p className="mx-auto mt-3 max-w-xl text-sm text-gray-500 dark:text-zinc-400">
+                                        Dari persiapan hingga dokumen EMR —
+                                        semua dalam satu alur kerja yang
+                                        intuitif.
+                                    </p>
+                                </div>
+                            </Reveal>
+
+                            <StaggerReveal
+                                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                                stagger={100}
+                            >
+                                {steps.map((s, i) => {
+                                    const c = colorMap[s.color];
+                                    return (
+                                        <div
+                                            key={s.num}
+                                            className="group relative flex flex-col rounded-2xl border border-gray-100 bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-white/5 dark:bg-[#1C1F2A]"
+                                        >
+                                            <div
+                                                className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${c.badge} shadow-sm transition-transform duration-300 group-hover:scale-105`}
+                                            >
+                                                <span className="font-mono text-xs font-black text-white">
+                                                    {s.num}
+                                                </span>
+                                            </div>
+                                            <h3 className="mb-1.5 text-sm font-bold text-gray-900 dark:text-white">
+                                                {s.title}
+                                            </h3>
+                                            <p className="text-xs leading-relaxed text-gray-500 dark:text-zinc-400">
+                                                {s.desc}
+                                            </p>
+                                            {i < steps.length - 1 && (
+                                                <div className="absolute top-1/2 -right-2 z-10 hidden -translate-y-1/2 lg:block">
+                                                    <svg
+                                                        className="h-4 w-4 text-gray-300 dark:text-zinc-700"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2.5"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            d="M9 5l7 7-7 7"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </StaggerReveal>
+
+                            {/* Demo video area */}
+                            <Reveal direction="up" delay={200}>
+                                <div className="mt-12 overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                                    <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+                                            <svg
+                                                className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2.5"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                                                />
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <span className="text-xs font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
+                                            Preview Cara Kerja
+                                        </span>
+                                    </div>
+                                    <div className="overflow-hidden rounded-b-3xl">
+                                        <video
+                                            className="w-full"
+                                            autoPlay
+                                            muted
+                                            loop
+                                            playsInline
+                                        >
+                                            <source
+                                                src="/assets/demo.mp4"
+                                                type="video/mp4"
+                                            />
+                                        </video>
+                                    </div>
+                                </div>
+                            </Reveal>
+                        </div>
+                    </section>
+
+                    {/* ══════════════════════════════════════════════════
+                     * FAQ — staggered accordion
+                     * ══════════════════════════════════════════════════ */}
+                    <section
+                        id="faq"
+                        className="bg-white px-4 py-16 md:px-6 md:py-24 dark:bg-[#141720]"
+                    >
+                        <div className="mx-auto max-w-3xl">
+                            <Reveal direction="up">
+                                <div className="mb-10 text-center">
+                                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 dark:border-blue-900/40 dark:bg-blue-950/30">
+                                        <span className="text-[11px] font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
+                                            FAQ
+                                        </span>
+                                    </div>
+                                    <h2 className="text-2xl font-black tracking-tight text-gray-900 md:text-3xl dark:text-white">
+                                        Pertanyaan yang Sering Ditanyakan
+                                    </h2>
+                                    <p className="mt-3 text-sm text-gray-500 dark:text-zinc-400">
+                                        Masih ada pertanyaan lain? Hubungi tim
+                                        kami.
+                                    </p>
+                                </div>
+                            </Reveal>
+
+                            <StaggerReveal className="space-y-3" stagger={60}>
+                                {faqs.map((faq) => (
+                                    <FaqItem key={faq.q} q={faq.q} a={faq.a} />
+                                ))}
+                            </StaggerReveal>
+                        </div>
+                    </section>
+
+                    {/* ══════════════════════════════════════════════════
+                     * FINAL CTA — scale reveal
+                     * ══════════════════════════════════════════════════ */}
+                    <section className="px-4 py-16 md:px-6 md:py-24">
+                        <div className="mx-auto max-w-3xl">
+                            <Reveal direction="scale">
+                                <div className="relative overflow-hidden rounded-3xl bg-blue-600 px-6 py-12 text-center md:px-12 md:py-16">
+                                    <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10" />
+                                    <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10" />
+                                    {/* Slow-floating secondary blob inside CTA */}
+                                    <div className="hero-float-slow pointer-events-none absolute top-0 right-1/4 h-24 w-24 rounded-full bg-blue-500/40 blur-xl" />
+
+                                    <div className="relative">
+                                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
+                                            <svg
+                                                className="h-7 w-7 text-white"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="1.75"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <h2 className="mb-3 text-2xl font-black tracking-tight text-white md:text-3xl">
+                                            Siap Meningkatkan Kualitas
+                                            <br className="hidden sm:block" />
+                                            Dokumentasi Code Blue?
+                                        </h2>
+                                        <p className="mx-auto mb-8 max-w-lg text-sm leading-relaxed text-blue-100">
+                                            Bergabung dengan tim medis yang
+                                            sudah menggunakan V-Code untuk
+                                            dokumentasi yang lebih cepat,
+                                            akurat, dan fokus pada pasien.
+                                        </p>
+                                        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                                            <Link
+                                                href={
+                                                    isLoggedIn
+                                                        ? '/record/setup'
+                                                        : '/register'
+                                                }
+                                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-bold text-blue-700 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-50 hover:shadow-xl active:scale-[0.98] sm:w-auto"
+                                            >
+                                                <svg
+                                                    className="h-4 w-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2.5"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                                                    />
+                                                </svg>
+                                                {isLoggedIn
+                                                    ? 'Mulai Rekam Sekarang'
+                                                    : 'Daftar Sekarang — Gratis'}
+                                            </Link>
+                                            {!isLoggedIn && (
+                                                <Link
+                                                    href="/login"
+                                                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/30 px-7 py-3.5 text-sm font-bold text-white transition-all duration-200 hover:bg-white/10 sm:w-auto"
+                                                >
+                                                    Sudah punya akun? Masuk
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Reveal>
+                        </div>
+                    </section>
+                </main>
+
+                {/* ══════════════════════════════════════════════════
+                 * FOOTER
+                 * ══════════════════════════════════════════════════ */}
+                <footer className="border-t border-gray-100 bg-white px-4 py-10 md:px-6 dark:border-white/5 dark:bg-[#0F1117]">
+                    <div className="mx-auto max-w-6xl">
+                        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+                            <div>
+                                <div className="mb-2 flex items-center gap-2.5">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+                                        <svg
+                                            className="h-4 w-4 text-white"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2.5"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <span className="text-sm font-black tracking-widest text-gray-900 dark:text-white">
+                                        V-CODE
+                                    </span>
+                                </div>
+                                <p className="max-w-xs text-xs text-gray-400 dark:text-zinc-500">
+                                    Sistem dokumentasi Code Blue berbasis suara
+                                    untuk tim medis Indonesia.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-6 text-xs font-semibold text-gray-400 dark:text-zinc-500">
+                                {[
+                                    { label: 'Fitur', href: '#fitur' },
+                                    {
+                                        label: 'Cara Kerja',
+                                        href: '#cara-kerja',
+                                    },
+                                    { label: 'FAQ', href: '#faq' },
+                                    { label: 'Masuk', href: '/login' },
+                                    { label: 'Daftar', href: '/register' },
+                                ].map(({ label, href }) => (
+                                    <a
+                                        key={label}
+                                        href={href}
+                                        className="transition-colors duration-200 hover:text-gray-900 dark:hover:text-white"
+                                    >
+                                        {label}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex flex-col items-start justify-between gap-2 border-t border-gray-100 pt-6 md:flex-row md:items-center dark:border-white/5">
+                            <p className="text-xs text-gray-400 dark:text-zinc-600">
+                                © {new Date().getFullYear()} V-CODE · EMR Rumah
+                                Sakit. Hak cipta dilindungi.
+                            </p>
+                            <p className="text-xs text-gray-300 dark:text-zinc-700">
+                                Dibuat dengan ♥ untuk tenaga medis Indonesia
+                            </p>
+                        </div>
+                    </div>
+                </footer>
             </div>
         </>
     );

@@ -10,6 +10,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -18,9 +19,6 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\View\PanelsRenderHook;
-use Filament\Support\Facades\FilamentView;
-use Illuminate\Support\Facades\Blade;
 
 class VCodeCorePanelProvider extends PanelProvider
 {
@@ -42,11 +40,11 @@ class VCodeCorePanelProvider extends PanelProvider
             )
             ->colors([
                 'primary' => Color::Blue,
-                'gray'    => Color::Slate,
+                'gray' => Color::Slate,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
-                'danger'  => Color::Rose,
-                'info'    => Color::Sky,
+                'danger' => Color::Rose,
+                'info' => Color::Sky,
             ])
             ->sidebarFullyCollapsibleOnDesktop()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
