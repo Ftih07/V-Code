@@ -389,21 +389,16 @@ export default function Welcome({
                             onClick={handleLogoClick}
                             title="Kembali ke Beranda"
                         >
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900/30">
-                                <svg
-                                    className="h-4 w-4 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                    />
-                                </svg>
+                            {/* Kotak Putih & Logo V */}
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
+                                <img
+                                    src="/apple-touch-icon.png?v=2"
+                                    alt="V-Code Icon"
+                                    className="h-full w-full object-contain"
+                                />
                             </div>
+
+                            {/* Teks Bawaan */}
                             <div>
                                 <p className="text-sm font-black tracking-widest text-gray-900 dark:text-white">
                                     V-CODE

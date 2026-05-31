@@ -24,31 +24,25 @@ function isInStandaloneMode(): boolean {
 }
 
 const DISMISSED_KEY = 'vcode_install_dismissed';
-const DISMISSED_EXPIRY_DAYS = 7; // Tanya lagi setelah 7 hari
 
+// Cek pakai sessionStorage: kalau ada key-nya berarti di tab ini udah di-close
 function wasDismissedRecently(): boolean {
     try {
-        const stored = localStorage.getItem(DISMISSED_KEY);
-
-        if (!stored) {
-            return false;
+        if (typeof window !== 'undefined') {
+            return !!sessionStorage.getItem(DISMISSED_KEY);
         }
-
-        const { timestamp } = JSON.parse(stored);
-        const days = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
-
-        return days < DISMISSED_EXPIRY_DAYS;
+        return false;
     } catch {
         return false;
     }
 }
 
+// Simpan ke sessionStorage (hilang otomatis kalau tab ditutup)
 function markDismissed() {
     try {
-        localStorage.setItem(
-            DISMISSED_KEY,
-            JSON.stringify({ timestamp: Date.now() }),
-        );
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem(DISMISSED_KEY, '1');
+        }
     } catch {
         /* ignore */
     }
@@ -57,25 +51,22 @@ function markDismissed() {
 export default function InstallBanner() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [show, setShow] = useState(false);
+
     // Gunakan fungsi pengecekan window untuk menghindari error jika menggunakan SSR
     const [platform, setPlatform] = useState<Platform>(() => {
         return typeof window !== 'undefined' ? detectPlatform() : 'other';
     });
 
     useEffect(() => {
-        // Jangan tampilkan jika sudah diinstall atau baru saja ditutup
+        // Jangan tampilkan jika sudah diinstall atau baru saja ditutup di tab ini
         if (isInStandaloneMode() || wasDismissedRecently()) {
             return;
         }
-
-        // const plat = detectPlatform();
-        // setPlatform(plat);
 
         if (platform === 'ios') {
             // iOS tidak punya beforeinstallprompt — tampilkan panduan manual
             // Tunda sedikit agar tidak langsung muncul saat halaman baru terbuka
             const t = setTimeout(() => setShow(true), 2500);
-
             return () => clearTimeout(t);
         }
 
@@ -139,21 +130,15 @@ export default function InstallBanner() {
                     {/* Header */}
                     <div className="mb-4 flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-600 shadow-md shadow-blue-200/50">
-                                <svg
-                                    className="h-6 w-6 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                    />
-                                </svg>
+                            {/* LOGO iOS DI SINI */}
+                            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white p-1.5 shadow-md ring-1 shadow-blue-900/5 ring-gray-900/5 dark:bg-[#1e2330] dark:shadow-none dark:ring-white/10">
+                                <img
+                                    src="/apple-touch-icon.png?v=2"
+                                    alt="V-Code Logo"
+                                    className="h-full w-full object-contain"
+                                />
                             </div>
+
                             <div>
                                 <p className="text-base font-black text-gray-900 dark:text-white">
                                     Install V-CODE
@@ -286,21 +271,15 @@ export default function InstallBanner() {
                 <div className="p-4">
                     <div className="mb-3 flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-sm">
-                                <svg
-                                    className="h-5 w-5 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                    />
-                                </svg>
+                            {/* LOGO ANDROID / DESKTOP DI SINI */}
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
+                                <img
+                                    src="/apple-touch-icon.png?v=2"
+                                    alt="V-Code Logo"
+                                    className="h-full w-full object-contain"
+                                />
                             </div>
+
                             <div>
                                 <p className="text-sm font-black text-gray-900 dark:text-white">
                                     Install V-CODE
