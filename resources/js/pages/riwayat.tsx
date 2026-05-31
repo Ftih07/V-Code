@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
-import NewAppLayout from '@/layouts/new-app-layout';
 import { useState, useEffect } from 'react';
+import NewAppLayout from '@/layouts/new-app-layout';
 
 interface RiwayatProps {
     sessions: any[];
@@ -44,6 +44,7 @@ export default function Riwayat({
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         }, 300);
+
         return () => clearTimeout(timeout);
     }, [search, incidentType, status, dateFilter, hasAudio]);
 

@@ -174,7 +174,7 @@ class CodeBlueController extends Controller
 
     public function summary(CodeBlueSession $codeBlueSession)
     {
-        abort_if($codeBlueSession->user_id !== auth()->id(), 403, 'Akses ditolak.');
+        abort_if($codeBlueSession->user_id != auth()->id(), 403, 'Akses ditolak.');
 
         $codeBlueSession->load(['user', 'logs']);
 
@@ -183,7 +183,7 @@ class CodeBlueController extends Controller
 
     public function edit(CodeBlueSession $codeBlueSession)
     {
-        abort_if($codeBlueSession->user_id !== auth()->id(), 403, 'Akses ditolak.');
+        abort_if($codeBlueSession->user_id != auth()->id(), 403, 'Akses ditolak.');
         $codeBlueSession->load(['patient', 'logs', 'user']);
 
         return Inertia::render('review', ['sessionData' => $codeBlueSession]);
@@ -191,7 +191,7 @@ class CodeBlueController extends Controller
 
     public function update(Request $request, CodeBlueSession $codeBlueSession)
     {
-        abort_if($codeBlueSession->user_id !== auth()->id(), 403, 'Akses ditolak.');
+        abort_if($codeBlueSession->user_id != auth()->id(), 403, 'Akses ditolak.');
 
         $request->validate([
             'additional_notes' => 'nullable|string',

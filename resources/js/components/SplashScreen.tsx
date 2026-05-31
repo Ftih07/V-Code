@@ -5,39 +5,48 @@ import { useState, useEffect } from 'react';
  *
  * Ditampilkan hanya sekali saat initial web/app boot.
  * Setelah MIN_DURATION ms, akan fade-out dan unmount.
- *
- * Letakkan di app.tsx di dalam withApp() — sebelum {app}:
- *   <SplashScreen />
- *   {app}
  */
 
-const MIN_DURATION = 1800; // ms minimal splash terlihat
-const FADE_DURATION = 400; // ms durasi fade-out animasi
+const MIN_DURATION = 1800;
+const FADE_DURATION = 400;
 const SESSION_KEY = 'vcode_splash_shown';
 
 export default function SplashScreen() {
-    const [visible, setVisible] = useState(false);
+    // 1. Set default awal HANYA true jika ini di browser dan belum diset
+    const [visible, setVisible] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !sessionStorage.getItem(SESSION_KEY);
+        }
+
+        return false;
+    });
+
     const [fading, setFading] = useState(false);
 
     useEffect(() => {
-        // Hanya tampilkan saat pertama kali di sesi browser ini
-        const alreadyShown = sessionStorage.getItem(SESSION_KEY);
-        if (alreadyShown) return;
+        // 2. Kalau pas mounting ternyata sudah harus sembunyi (atau tidak visible), berhenti.
+        if (!visible) {
+return;
+}
 
-        // Tandai sudah ditampilkan agar tidak muncul lagi saat navigasi
-        sessionStorage.setItem(SESSION_KEY, '1');
-        setVisible(true);
-
+        // 3. Langsung set timer animasi
         const hideTimer = setTimeout(() => {
             setFading(true);
-            // Unmount setelah animasi fade selesai
-            setTimeout(() => setVisible(false), FADE_DURATION);
+
+            // Unmount sepenuhnya setelah animasi css selesai
+            setTimeout(() => {
+                setVisible(false);
+                // Tandai di session storage supaya tidak muncul lagi jika di-refresh
+                sessionStorage.setItem(SESSION_KEY, '1');
+            }, FADE_DURATION);
         }, MIN_DURATION);
 
         return () => clearTimeout(hideTimer);
-    }, []);
+    }, [visible]);
 
-    if (!visible) return null;
+    if (!visible) {
+        return null;
+    }
 
     return (
         <div
@@ -52,10 +61,8 @@ export default function SplashScreen() {
                 background: '#ffffff',
                 transition: `opacity ${FADE_DURATION}ms ease`,
                 opacity: fading ? 0 : 1,
-                // Prevent interaction while visible
-                pointerEvents: 'all',
+                pointerEvents: fading ? 'none' : 'all', // Pastikan saat fading tidak memblokir interaksi user
             }}
-            // Dark mode: match tailwind dark bg
             className="dark:bg-[#0F1117]"
         >
             {/* Logo mark */}

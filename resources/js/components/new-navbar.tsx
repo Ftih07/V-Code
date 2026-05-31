@@ -1,11 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
 
-type Session = {
-    id: number;
-    status: string;
-    created_at: string;
-};
-
 type NavbarProps = {
     isSidebarOpen: boolean;
     toggleSidebar: () => void;
@@ -19,21 +13,7 @@ export default function NewNavbar({
     theme,
     toggleTheme,
 }: NavbarProps) {
-    const { url, props } = usePage();
-
-    const sessions = (props.sessions as Session[]) || [];
-
-    const lastDraftSession = sessions
-        .filter((session) => session.status === 'draft')
-        .sort(
-            (a, b) =>
-                new Date(b.created_at).getTime() -
-                new Date(a.created_at).getTime(),
-        )[0];
-
-    const draftLink = lastDraftSession
-        ? `/draft/${lastDraftSession.id}`
-        : '/dashboard';
+    const { url } = usePage();
 
     const navigationItems = [
         {
@@ -97,11 +77,19 @@ export default function NewNavbar({
 
     const isUrlActive = (href: string) => {
         const currentPath = url.split('?')[0];
-        if (href === '/dashboard')
-            return currentPath === '/dashboard' || currentPath === '/';
-        if (href === '/riwayat') return currentPath === '/riwayat';
-        if (href === '/settings/profile')
-            return currentPath === '/settings/profile';
+
+        if (href === '/dashboard') {
+return currentPath === '/dashboard' || currentPath === '/';
+}
+
+        if (href === '/riwayat') {
+return currentPath === '/riwayat';
+}
+
+        if (href === '/settings/profile') {
+return currentPath === '/settings/profile';
+}
+
         return currentPath.startsWith(href);
     };
 
@@ -202,6 +190,7 @@ export default function NewNavbar({
                 <nav className="flex h-[64px] w-full max-w-sm items-center justify-around rounded-[2rem] border border-white/60 bg-white/85 px-6 shadow-[0_8px_32px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-700/60 dark:bg-slate-900/85 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
                     {navigationItems.map((item) => {
                         const active = isUrlActive(item.href);
+
                         return (
                             <Link
                                 key={item.name}
@@ -324,6 +313,7 @@ export default function NewNavbar({
                 <nav className="flex-1 space-y-1 overflow-y-auto p-3">
                     {navigationItems.map((item) => {
                         const active = isUrlActive(item.href);
+
                         return (
                             <Link
                                 key={item.name}

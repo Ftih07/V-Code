@@ -1,8 +1,8 @@
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import AppLayout from '@/layouts/new-app-layout';
 import axios from 'axios';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
+import AppLayout from '@/layouts/new-app-layout';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type SessionLog = {
@@ -39,15 +39,14 @@ type ClassifyRule = {
 };
 
 // ─── Konstanta ────────────────────────────────────────────────────────────────
-const GOOGLE_TIMEOUT_MS = 7_000;
 const MIN_BLOB_BYTES = 3_500;
-const WS_RESTART_DELAY = 400;
-const WS_MAX_RESTARTS = 5;
-const WS_COOLDOWN_MS = 3_000;
 
 // ─── Deteksi mobile ──────────────────────────────────────────────────────────
 function isMobileBrowser(): boolean {
-    if (typeof navigator === 'undefined') return false;
+    if (typeof navigator === 'undefined') {
+        return false;
+    }
+
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
@@ -237,9 +236,11 @@ function classifyWithRules(
 ): { category: string; targetField: keyof AutoFillData | null } {
     const activeRules = rules.length > 0 ? rules : FALLBACK_CLASSIFY_RULES;
     const lower = text.toLowerCase();
+
     for (const rule of activeRules) {
         const kw = rule.keyword.toLowerCase();
         let matched = false;
+
         switch (rule.match_mode) {
             case 'exact':
                 matched = lower === kw;
@@ -253,16 +254,20 @@ function classifyWithRules(
                 } catch {
                     matched = false;
                 }
+
                 break;
             default:
                 matched = lower.includes(kw);
         }
-        if (matched)
+
+        if (matched) {
             return {
                 category: rule.category,
                 targetField: rule.target_field as keyof AutoFillData | null,
             };
+        }
     }
+
     return { category: 'tindakan', targetField: null };
 }
 
@@ -275,20 +280,26 @@ function isRefinement(a: string, b: string): boolean {
             .trim();
     const na = normalize(a);
     const nb = normalize(b);
+
     if (
         na === nb ||
         na.startsWith(nb) ||
         nb.startsWith(na) ||
         na.includes(nb) ||
         nb.includes(na)
-    )
+    ) {
         return true;
+    }
+
     const wordsA = new Set(na.split(' '));
     const wordsB = new Set(nb.split(' '));
     let same = 0;
     wordsA.forEach((w) => {
-        if (wordsB.has(w)) same++;
+        if (wordsB.has(w)) {
+            same++;
+        }
     });
+
     return same / Math.max(wordsA.size, wordsB.size) >= 0.5;
 }
 
@@ -300,38 +311,71 @@ function pickMime(): string | null {
         'audio/mp4',
         'audio/mpeg',
     ];
+
     for (const mime of candidates) {
-        if (MediaRecorder.isTypeSupported(mime)) return mime;
+        if (MediaRecorder.isTypeSupported(mime)) {
+            return mime;
+        }
     }
+
     return isMobileBrowser() ? '' : null;
 }
 
 // ─── Badge & style helpers ────────────────────────────────────────────────────
 function catBg(c: string) {
-    if (c === 'pengkajian')
+    if (c === 'pengkajian') {
         return 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/40';
-    if (c === 'evaluasi')
+    }
+
+    if (c === 'evaluasi') {
         return 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800/40';
+    }
+
     return 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40';
 }
 function catDot(c: string) {
-    if (c === 'pengkajian') return 'bg-blue-500';
-    if (c === 'evaluasi') return 'bg-purple-500';
+    if (c === 'pengkajian') {
+        return 'bg-blue-500';
+    }
+
+    if (c === 'evaluasi') {
+        return 'bg-purple-500';
+    }
+
     return 'bg-emerald-500';
 }
 function catBadge(c: string) {
-    if (c === 'pengkajian')
+    if (c === 'pengkajian') {
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300';
-    if (c === 'evaluasi')
+    }
+
+    if (c === 'evaluasi') {
         return 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300';
+    }
+
     return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300';
 }
 function debugColor(type: DebugEntry['type']) {
-    if (type === 'result') return 'text-emerald-600 dark:text-emerald-400';
-    if (type === 'send') return 'text-blue-600 dark:text-blue-400';
-    if (type === 'silence') return 'text-gray-400 dark:text-zinc-600';
-    if (type === 'error') return 'text-red-600 dark:text-red-400';
-    if (type === 'ws') return 'text-amber-600 dark:text-amber-400';
+    if (type === 'result') {
+        return 'text-emerald-600 dark:text-emerald-400';
+    }
+
+    if (type === 'send') {
+        return 'text-blue-600 dark:text-blue-400';
+    }
+
+    if (type === 'silence') {
+        return 'text-gray-400 dark:text-zinc-600';
+    }
+
+    if (type === 'error') {
+        return 'text-red-600 dark:text-red-400';
+    }
+
+    if (type === 'ws') {
+        return 'text-amber-600 dark:text-amber-400';
+    }
+
     return 'text-gray-600 dark:text-zinc-500';
 }
 
@@ -357,16 +401,26 @@ export default function Record({
     const [showDebug, setShowDebug] = useState(false);
     const [googlePending, setGooglePending] = useState<Set<number>>(new Set());
     const [classifyRules, setClassifyRules] = useState<ClassifyRule[]>([]);
-    const [autoFill, setAutoFill] = useState<AutoFillData>({
-        assessment_condition: '',
-        ttv_time: '',
-        ttv_td: '',
-        ttv_nadi: '',
-        ttv_rr: '',
-        ttv_spo2: '',
-        ttv_gcs: '',
-        evaluation_result: '',
-        evaluation_plan: '',
+    const [autoFill, setAutoFill] = useState<AutoFillData>(() => {
+        const hms = new Date()
+            .toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            })
+            .replace(/\./g, ':');
+
+        return {
+            assessment_condition: '',
+            ttv_time: hms,
+            ttv_td: '',
+            ttv_nadi: '',
+            ttv_rr: '',
+            ttv_spo2: '',
+            ttv_gcs: '',
+            evaluation_result: '',
+            evaluation_plan: '',
+        };
     });
 
     // ── Refs ──────────────────────────────────────────────────────────────────
@@ -398,6 +452,61 @@ export default function Record({
         silenceTimer: null as ReturnType<typeof setTimeout> | null,
     });
 
+    const killAll = useCallback(() => {
+        isRecordingRef.current = false;
+
+        if (wsRestartTimerRef.current) {
+            clearTimeout(wsRestartTimerRef.current);
+        }
+
+        if (vadStateRef.current.silenceTimer) {
+            clearTimeout(vadStateRef.current.silenceTimer);
+        }
+
+        try {
+            recognitionRef.current?.stop();
+        } catch {
+            /* ignore */
+        }
+
+        try {
+            audioContextRef.current?.close();
+        } catch {
+            /* ignore */
+        }
+
+        if (recorderRef.current?.state !== 'inactive') {
+            recorderRef.current?.stop();
+        }
+
+        if (fullRecorderRef.current?.state !== 'inactive') {
+            fullRecorderRef.current?.stop();
+        }
+
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
+    }, []);
+
+    // Generate animasi visualizer menggunakan rumus statis ringan (pseudo-random)
+    // Ini mengelabui linter karena hasilnya selalu stabil pada setiap render
+    const audioVisualizerBars = useMemo(() => {
+        return Array.from({ length: 28 }).map((_, i) => {
+            const pseudoRandom = (Math.sin(i * 12.9898) * 43758.5453) % 1;
+            const positiveRandom =
+                pseudoRandom < 0 ? pseudoRandom * -1 : pseudoRandom;
+
+            return {
+                height: `${positiveRandom * 30 + 6}px`,
+                animation: `pulse ${0.6 + positiveRandom * 0.8}s ease-in-out infinite`,
+                animationDelay: `${i * 0.05}s`,
+            };
+        });
+    }, []);
+
     // ── Sync refs ─────────────────────────────────────────────────────────────
     useEffect(() => {
         autoFillRef.current = autoFill;
@@ -408,15 +517,6 @@ export default function Record({
 
     // ── Init ──────────────────────────────────────────────────────────────────
     useEffect(() => {
-        const hms = new Date()
-            .toLocaleTimeString('id-ID', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-            })
-            .replace(/\./g, ':');
-        setAutoFill((p) => ({ ...p, ttv_time: hms }));
-
         axios
             .get('/record/classify-rules')
             .then((res) => {
@@ -426,17 +526,20 @@ export default function Record({
                 setClassifyRules(sorted);
                 classifyRulesRef.current = sorted;
             })
-            .catch(() => {});
+            .catch(() => {
+                /* ignore */
+            });
 
         return () => killAll();
-    }, []);
+    }, [killAll]);
 
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs, interimText]);
     useEffect(() => {
-        if (showDebug)
+        if (showDebug) {
             debugEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [debugLogs, showDebug]);
 
     // ── Debug ─────────────────────────────────────────────────────────────────
@@ -455,7 +558,9 @@ export default function Record({
                     type,
                     message: msg,
                 })
-                .catch(() => {});
+                .catch(() => {
+                    /* ignore */
+                });
         },
         [patient.id],
     );
@@ -463,21 +568,30 @@ export default function Record({
     // ── AutoFill ──────────────────────────────────────────────────────────────
     const updateAutoFill = useCallback(
         (field: keyof AutoFillData, text: string, isCorrection = false) => {
-            let cleanText = text.replace(/\s+per\s+/gi, '/');
+            const cleanText = text.replace(/\s+per\s+/gi, '/');
             setAutoFill((prev) => {
                 const existing = prev[field] as string;
-                if (!existing) return { ...prev, [field]: cleanText };
+
+                if (!existing) {
+                    return { ...prev, [field]: cleanText };
+                }
+
                 const entries = existing.split('. ');
                 const last = entries[entries.length - 1];
+
                 if (isCorrection) {
                     entries[entries.length - 1] = cleanText;
+
                     return { ...prev, [field]: entries.join('. ') };
                 }
+
                 if (isRefinement(last, cleanText)) {
                     entries[entries.length - 1] =
                         cleanText.length >= last.length ? cleanText : last;
+
                     return { ...prev, [field]: entries.join('. ') };
                 }
+
                 return { ...prev, [field]: existing + '. ' + cleanText };
             });
         },
@@ -497,13 +611,16 @@ export default function Record({
                 setLogs((prev) => {
                     if (prev.length > 0) {
                         const last = prev[prev.length - 1];
+
                         if (
                             last.action_text.toLowerCase().trim() ===
                             text.toLowerCase().trim()
                         ) {
                             assignedIdx = prev.length - 1;
+
                             return prev;
                         }
+
                         if (
                             last.category === category &&
                             timestamp - last.timestamp < 5_000 &&
@@ -514,13 +631,16 @@ export default function Record({
                                     ? text
                                     : last.action_text;
                             assignedIdx = prev.length - 1;
+
                             return [
                                 ...prev.slice(0, -1),
                                 { ...last, action_text: longer, timestamp },
                             ];
                         }
                     }
+
                     assignedIdx = prev.length;
+
                     return [
                         ...prev,
                         {
@@ -532,6 +652,7 @@ export default function Record({
                     ];
                 });
             });
+
             return assignedIdx;
         },
         [],
@@ -540,9 +661,13 @@ export default function Record({
     const patchLog = useCallback(
         (idx: number, text: string, category: string) => {
             setLogs((prev) => {
-                if (idx < 0 || idx >= prev.length) return prev;
+                if (idx < 0 || idx >= prev.length) {
+                    return prev;
+                }
+
                 const updated = [...prev];
                 updated[idx] = { ...prev[idx], action_text: text, category };
+
                 return updated;
             });
         },
@@ -552,10 +677,16 @@ export default function Record({
     // ── Upload Audio (Google STT) ──────────────────────────────────────────
     const uploadToGoogle = useCallback(
         async (chunks: Blob[], sourceType: string, prefillLogIdx?: number) => {
-            if (!chunks.length) return;
+            if (!chunks.length) {
+                return;
+            }
+
             const mime = mimeRef.current;
             const blob = new Blob(chunks, { type: mime });
-            if (blob.size < MIN_BLOB_BYTES) return; // Skip ukuran terlalu kecil (noise)
+
+            if (blob.size < MIN_BLOB_BYTES) {
+                return;
+            } // Skip ukuran terlalu kecil (noise)
 
             let currentLogIdx = prefillLogIdx ?? -1;
             const ext = mime.includes('ogg')
@@ -604,20 +735,33 @@ export default function Record({
                             now.getTime(),
                         );
                     }
-                    if (field) updateAutoFill(field, text, true);
-                    if (isMobileBrowser()) setInterimText('');
+
+                    if (field) {
+                        updateAutoFill(field, text, true);
+                    }
+
+                    if (isMobileBrowser()) {
+                        setInterimText('');
+                    }
                 } else {
                     dbg(`Google: (kosong/noise)`, 'silence');
-                    if (isMobileBrowser()) setInterimText('');
+
+                    if (isMobileBrowser()) {
+                        setInterimText('');
+                    }
                 }
-            } catch (err) {
+            } catch {
                 dbg(`Google Upload Error`, 'error');
-                if (isMobileBrowser()) setInterimText('');
+
+                if (isMobileBrowser()) {
+                    setInterimText('');
+                }
             } finally {
                 if (currentLogIdx !== -1) {
                     setGooglePending((prev) => {
                         const next = new Set(prev);
                         next.delete(currentLogIdx);
+
                         return next;
                     });
                 }
@@ -632,8 +776,9 @@ export default function Record({
             if (
                 !recorderRef.current ||
                 recorderRef.current.state !== 'recording'
-            )
+            ) {
                 return;
+            }
 
             const audioSnapshot = [...chunksRef.current];
             chunksRef.current = [];
@@ -643,13 +788,18 @@ export default function Record({
             oldRecorder.stop();
 
             setTimeout(() => {
-                if (!isRecordingRef.current || !streamRef.current) return;
+                if (!isRecordingRef.current || !streamRef.current) {
+                    return;
+                }
+
                 const newRecorder = new MediaRecorder(streamRef.current, {
                     audioBitsPerSecond: 96_000,
                     ...(mimeRef.current && { mimeType: mimeRef.current }),
                 });
                 newRecorder.ondataavailable = (e) => {
-                    if (e.data?.size > 0) chunksRef.current.push(e.data);
+                    if (e.data?.size > 0) {
+                        chunksRef.current.push(e.data);
+                    }
                 };
                 newRecorder.start(300); // Start dengan slice kecil
                 recorderRef.current = newRecorder;
@@ -665,7 +815,10 @@ export default function Record({
         const SR =
             (window as any).SpeechRecognition ||
             (window as any).webkitSpeechRecognition;
-        if (!SR) return;
+
+        if (!SR) {
+            return;
+        }
 
         const rec = new SR();
         rec.continuous = true;
@@ -676,9 +829,14 @@ export default function Record({
         rec.onstart = () => dbg(`WS started (Desktop Mode)`, 'ws');
         rec.onresult = (event: any) => {
             let interim = '';
+
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const text = event.results[i][0].transcript.trim();
-                if (!text) continue;
+
+                if (!text) {
+                    continue;
+                }
+
                 if (event.results[i].isFinal) {
                     const now = new Date();
                     const { category, targetField } = classifyWithRules(
@@ -692,7 +850,11 @@ export default function Record({
                         now.toLocaleTimeString('id-ID', { hour12: false }),
                         now.getTime(),
                     );
-                    if (targetField) updateAutoFill(targetField, text);
+
+                    if (targetField) {
+                        updateAutoFill(targetField, text);
+                    }
+
                     setGooglePending((prev) => new Set(prev).add(logIdx));
 
                     triggerChunkUpload('Desktop WS', logIdx);
@@ -700,33 +862,43 @@ export default function Record({
                     interim += text;
                 }
             }
+
             setInterimText(interim);
         };
         rec.onerror = (e: any) => {
-            if (e.error !== 'no-speech') dbg(`WS error: ${e.error}`, 'error');
+            if (e.error !== 'no-speech') {
+                dbg(`WS error: ${e.error}`, 'error');
+            }
         };
         rec.onend = () => {
             if (isRecordingRef.current) {
                 wsRestartTimerRef.current = setTimeout(() => {
                     try {
                         recognitionRef.current?.start();
-                    } catch (e) {}
+                    } catch {
+                        /* ignore */
+                    }
                 }, 400);
             }
         };
         recognitionRef.current = rec;
+
         try {
             recognitionRef.current?.start();
-        } catch (e) {}
+        } catch {
+            /* ignore */
+        }
     }, [dbg, insertLog, updateAutoFill, triggerChunkUpload]);
 
     // ── Start Recording Utama ────────────────────────────────────────────────
     const startRecording = async () => {
         const mime = pickMime();
+
         if (!mime && !isMobileBrowser()) {
             alert(
                 'Browser tidak mendukung format audio apapun. Coba Chrome/Edge terbaru.',
             );
+
             return;
         }
 
@@ -735,6 +907,7 @@ export default function Record({
         dbg(`Mobile mode: ${isMobileBrowser()}`, 'info');
 
         let stream: MediaStream;
+
         try {
             stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
@@ -746,8 +919,9 @@ export default function Record({
                 },
             });
             dbg(`Stream OK: ${stream.getAudioTracks()[0].label}`, 'info');
-        } catch (err) {
+        } catch {
             alert('Gagal akses mic. Pastikan izin browser menyala.');
+
             return;
         }
 
@@ -770,7 +944,9 @@ export default function Record({
         };
         const rec = new MediaRecorder(stream, options);
         rec.ondataavailable = (e) => {
-            if (e.data?.size > 0) chunksRef.current.push(e.data);
+            if (e.data?.size > 0) {
+                chunksRef.current.push(e.data);
+            }
         };
         rec.start(300);
         recorderRef.current = rec;
@@ -779,7 +955,9 @@ export default function Record({
         fullChunksRef.current = [];
         const fullRec = new MediaRecorder(stream, options);
         fullRec.ondataavailable = (e) => {
-            if (e.data.size > 0) fullChunksRef.current.push(e.data);
+            if (e.data.size > 0) {
+                fullChunksRef.current.push(e.data);
+            }
         };
         fullRec.onstop = () =>
             setFullAudioBlob(
@@ -807,11 +985,17 @@ export default function Record({
             const checkAudio = () => {
                 if (!isRecordingRef.current) {
                     audioCtx.close();
+
                     return;
                 }
+
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0;
-                for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+
                 const avg = sum / bufferLength;
 
                 if (avg > 12) {
@@ -820,6 +1004,7 @@ export default function Record({
                         vadStateRef.current.isSpeaking = true;
                         setInterimText('Mendengarkan...');
                     }
+
                     if (vadStateRef.current.silenceTimer) {
                         clearTimeout(vadStateRef.current.silenceTimer);
                         vadStateRef.current.silenceTimer = null;
@@ -838,38 +1023,19 @@ export default function Record({
                         }, 1500); // Tunggu 1.5 detik hening sebelum kirim
                     }
                 }
+
                 requestAnimationFrame(checkAudio);
             };
             checkAudio();
         }
+
         dbg('=== Recording dimulai ===', 'info');
     };
 
-    const killAll = useCallback(() => {
-        isRecordingRef.current = false;
-        if (wsRestartTimerRef.current) clearTimeout(wsRestartTimerRef.current);
-        if (vadStateRef.current.silenceTimer)
-            clearTimeout(vadStateRef.current.silenceTimer);
-        try {
-            recognitionRef.current?.stop();
-        } catch {}
-        try {
-            audioContextRef.current?.close();
-        } catch {}
-
-        if (recorderRef.current?.state !== 'inactive')
-            recorderRef.current?.stop();
-        if (fullRecorderRef.current?.state !== 'inactive')
-            fullRecorderRef.current?.stop();
-
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        if (timerRef.current) clearInterval(timerRef.current);
-    }, []);
-
     const toggleRecording = () => {
-        if (!isRecording) startRecording();
-        else {
+        if (!isRecording) {
+            startRecording();
+        } else {
             setIsRecording(false);
             setInterimText('');
             killAll();
@@ -1012,15 +1178,11 @@ export default function Record({
                     {/* ── AUDIO VISUALIZER ── */}
                     {isRecording && (
                         <div className="mb-4 flex items-center justify-center gap-0.5 rounded-2xl border border-red-100 bg-red-50 py-5 dark:border-red-900/20 dark:bg-red-950/20">
-                            {Array.from({ length: 28 }).map((_, i) => (
+                            {audioVisualizerBars.map((barStyle, i) => (
                                 <div
                                     key={i}
                                     className="w-1 rounded-full bg-red-400 dark:bg-red-500"
-                                    style={{
-                                        height: `${Math.random() * 30 + 6}px`,
-                                        animation: `pulse ${0.6 + Math.random() * 0.8}s ease-in-out infinite`,
-                                        animationDelay: `${i * 0.05}s`,
-                                    }}
+                                    style={barStyle} // Langsung gunakan objek style dari useMemo
                                 />
                             ))}
                         </div>

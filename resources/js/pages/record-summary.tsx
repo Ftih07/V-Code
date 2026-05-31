@@ -15,6 +15,7 @@ export default function RecordSummary({ sessionData }: any) {
                 typeof sessionData.team_members === 'string'
                     ? JSON.parse(sessionData.team_members)
                     : sessionData.team_members;
+
             return Array.isArray(parsed) ? parsed : [];
         } catch {
             return [];

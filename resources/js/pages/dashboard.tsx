@@ -14,7 +14,6 @@ type Session = {
 
 export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
     const draftCount = sessions.filter((s) => s.status === 'draft').length;
-    const doneCount = sessions.filter((s) => s.status !== 'draft').length;
 
     return (
         <>

@@ -12,15 +12,11 @@ export type UseAppearanceReturn = {
 const listeners = new Set<() => void>();
 let currentAppearance: Appearance = 'light'; // Default dipaksa jadi light
 
-// Matikan deteksi Dark Mode bawaan OS/Windows
-const prefersDark = (): boolean => {
-    return false;
-};
-
 const setCookie = (name: string, value: string, days = 365): void => {
     if (typeof document === 'undefined') {
         return;
     }
+
     const maxAge = days * 24 * 60 * 60;
     document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
 };
@@ -29,6 +25,7 @@ const getStoredAppearance = (): Appearance => {
     if (typeof window === 'undefined') {
         return 'light';
     }
+
     // 👇 GANTI KEY: Sekarang membaca dari 'theme', bukan 'appearance'
     return (localStorage.getItem('theme') as Appearance) || 'light';
 };
@@ -42,6 +39,7 @@ const applyTheme = (appearance: Appearance): void => {
     if (typeof document === 'undefined') {
         return;
     }
+
     const isDark = isDarkMode(appearance);
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
@@ -49,6 +47,7 @@ const applyTheme = (appearance: Appearance): void => {
 
 const subscribe = (callback: () => void) => {
     listeners.add(callback);
+
     return () => listeners.delete(callback);
 };
 

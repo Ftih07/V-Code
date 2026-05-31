@@ -4,8 +4,15 @@ type Platform = 'android' | 'ios' | 'other';
 
 function detectPlatform(): Platform {
     const ua = navigator.userAgent;
-    if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
-    if (/android/i.test(ua)) return 'android';
+
+    if (/iphone|ipad|ipod/i.test(ua)) {
+        return 'ios';
+    }
+
+    if (/android/i.test(ua)) {
+        return 'android';
+    }
+
     return 'other';
 }
 
@@ -22,9 +29,14 @@ const DISMISSED_EXPIRY_DAYS = 7; // Tanya lagi setelah 7 hari
 function wasDismissedRecently(): boolean {
     try {
         const stored = localStorage.getItem(DISMISSED_KEY);
-        if (!stored) return false;
+
+        if (!stored) {
+            return false;
+        }
+
         const { timestamp } = JSON.parse(stored);
         const days = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
+
         return days < DISMISSED_EXPIRY_DAYS;
     } catch {
         return false;
@@ -45,21 +57,25 @@ function markDismissed() {
 export default function InstallBanner() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [show, setShow] = useState(false);
-    const [platform, setPlatform] = useState<Platform>('other');
-    const [showIOSSteps, setShowIOSSteps] = useState(false);
-    const [installed, setInstalled] = useState(false);
+    // Gunakan fungsi pengecekan window untuk menghindari error jika menggunakan SSR
+    const [platform, setPlatform] = useState<Platform>(() => {
+        return typeof window !== 'undefined' ? detectPlatform() : 'other';
+    });
 
     useEffect(() => {
         // Jangan tampilkan jika sudah diinstall atau baru saja ditutup
-        if (isInStandaloneMode() || wasDismissedRecently()) return;
+        if (isInStandaloneMode() || wasDismissedRecently()) {
+            return;
+        }
 
-        const plat = detectPlatform();
-        setPlatform(plat);
+        // const plat = detectPlatform();
+        // setPlatform(plat);
 
-        if (plat === 'ios') {
+        if (platform === 'ios') {
             // iOS tidak punya beforeinstallprompt — tampilkan panduan manual
             // Tunda sedikit agar tidak langsung muncul saat halaman baru terbuka
             const t = setTimeout(() => setShow(true), 2500);
+
             return () => clearTimeout(t);
         }
 
@@ -75,30 +91,35 @@ export default function InstallBanner() {
 
         // Deteksi jika sudah berhasil diinstall
         window.addEventListener('appinstalled', () => {
-            setInstalled(true);
             setShow(false);
         });
 
         return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
+    }, [platform]);
 
     const handleInstall = async () => {
-        if (!deferredPrompt) return;
+        if (!deferredPrompt) {
+            return;
+        }
+
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
+
         if (outcome === 'accepted') {
             setShow(false);
         }
+
         setDeferredPrompt(null);
     };
 
     const handleDismiss = () => {
         markDismissed();
         setShow(false);
-        setShowIOSSteps(false);
     };
 
-    if (!show) return null;
+    if (!show) {
+        return null;
+    }
 
     // ── iOS: bottom sheet dengan panduan Add to Home Screen ──
     if (platform === 'ios') {

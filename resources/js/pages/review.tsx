@@ -1,7 +1,8 @@
 import { Head, useForm, Link } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
-import AppLayout from '@/layouts/new-app-layout';
 import axios from 'axios';
+import type { FormEventHandler} from 'react';
+import { useState } from 'react';
+import AppLayout from '@/layouts/new-app-layout';
 
 // ─── Shared input class ───────────────────────────────────────────────────────
 
@@ -12,82 +13,6 @@ const textareaClass =
     'w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-blue-500 dark:focus:bg-white/10 dark:focus:ring-blue-500/20';
 
 // ─── Sub-helpers ──────────────────────────────────────────────────────────────
-
-function SectionHeader({
-    color,
-    label,
-}: {
-    color: 'blue' | 'emerald' | 'purple';
-    label: string;
-}) {
-    const colorMap = {
-        blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
-        emerald:
-            'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
-        purple: 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400',
-    };
-    const iconMap = {
-        blue: (
-            <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-            >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                />
-            </svg>
-        ),
-        emerald: (
-            <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-            >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-            </svg>
-        ),
-        purple: (
-            <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-            >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-            </svg>
-        ),
-    };
-    return (
-        <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
-            <div
-                className={`flex h-7 w-7 items-center justify-center rounded-lg ${colorMap[color]}`}
-            >
-                {iconMap[color]}
-            </div>
-            <span
-                className={`text-xs font-bold tracking-widest uppercase ${colorMap[color].split(' ')[1]} ${colorMap[color].split(' ')[3]}`}
-            >
-                {label}
-            </span>
-        </div>
-    );
-}
 
 function TtvRow({
     label,
@@ -172,6 +97,7 @@ export default function Review({ sessionData }: any) {
     const openDebugLog = async () => {
         setShowLogModal(true);
         setIsLoadingLogs(true);
+
         try {
             const res = await axios.get(
                 `/api/code-blue/debug-log/${sessionData.id}`,
@@ -185,16 +111,32 @@ export default function Review({ sessionData }: any) {
     };
 
     const getLogColor = (type: string) => {
-        if (type === 'result') return 'text-emerald-400';
-        if (type === 'send') return 'text-blue-400';
-        if (type === 'error') return 'text-red-400';
-        if (type === 'ws') return 'text-amber-400';
-        if (type === 'silence') return 'text-zinc-600';
+        if (type === 'result') {
+return 'text-emerald-400';
+}
+
+        if (type === 'send') {
+return 'text-blue-400';
+}
+
+        if (type === 'error') {
+return 'text-red-400';
+}
+
+        if (type === 'ws') {
+return 'text-amber-400';
+}
+
+        if (type === 'silence') {
+return 'text-zinc-600';
+}
+
         return 'text-zinc-400';
     };
 
     const renderTeamMembers = () => {
         let members = sessionData.team_members;
+
         if (typeof members === 'string') {
             try {
                 members = JSON.parse(members);
@@ -202,6 +144,7 @@ export default function Review({ sessionData }: any) {
                 return <p className="text-sm text-gray-500">{members}</p>;
             }
         }
+
         if (Array.isArray(members)) {
             return members.map((m: any, i: number) => (
                 <div
@@ -217,6 +160,7 @@ export default function Review({ sessionData }: any) {
                 </div>
             ));
         }
+
         return <p className="text-sm text-gray-500">—</p>;
     };
 

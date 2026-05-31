@@ -1,40 +1,44 @@
-import { PropsWithChildren, useState, useEffect } from 'react';
+import type { PropsWithChildren } from 'react';
+import { useState, useEffect } from 'react';
 import NewNavbar from '@/components/new-navbar';
 
 export default function AppLayout({ children }: PropsWithChildren) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-    // Cek preferensi tema saat komponen pertama kali dimuat
+    // 1. Inisialisasi state sekaligus mengecek localStorage
+    // Kalau tidak ada riwayat, otomatis default ke 'light'
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        if (typeof window !== 'undefined') {
+            const savedTheme = localStorage.getItem('theme');
+
+            if (savedTheme === 'dark') {
+                return 'dark';
+            }
+        }
+
+        return 'light'; // Default ke Light Mode!
+    });
+
+    // 2. Gunakan useEffect HANYA untuk mengubah class HTML di DOM
+    // Ini berjalan secara otomatis setiap kali state 'theme' berubah
     useEffect(() => {
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia(
-            '(prefers-color-scheme: dark)',
-        ).matches;
-
-        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-            setTheme('dark');
+        if (theme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
-            setTheme('light');
             document.documentElement.classList.remove('dark');
         }
-    }, []);
+    }, [theme]);
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
+    // 3. Fungsi toggle jadi lebih bersih
     const toggleTheme = () => {
-        if (theme === 'light') {
-            setTheme('dark');
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            setTheme('light');
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
+        const newTheme = theme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+        // DOM HTML akan otomatis ter-update oleh useEffect di atas
     };
 
     return (

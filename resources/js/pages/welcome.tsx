@@ -55,18 +55,23 @@ const colorMap: Record<string, { icon: string; badge: string; dot: string }> = {
 // ─── Hook: IntersectionObserver-based reveal ──────────────────────────────────
 function useReveal(threshold = 0.15) {
     const ref = useRef<HTMLDivElement>(null);
-    const [visible, setVisible] = useState(false);
+    const [visible, setVisible] = useState(() => {
+        // Cek animasi saat pertama kali load
+        if (typeof window !== 'undefined') {
+            const prefersReduced = window.matchMedia(
+                '(prefers-reduced-motion: reduce)',
+            ).matches;
+
+            return prefersReduced; // Jika tidak suka animasi, langsung set visible (melewati pre-loader)
+        }
+
+        return false;
+    });
 
     useEffect(() => {
         const el = ref.current;
-        if (!el) return;
 
-        // Respect prefers-reduced-motion
-        const prefersReduced = window.matchMedia(
-            '(prefers-reduced-motion: reduce)',
-        ).matches;
-        if (prefersReduced) {
-            setVisible(true);
+        if (!el) {
             return;
         }
 
@@ -80,6 +85,7 @@ function useReveal(threshold = 0.15) {
             { threshold },
         );
         observer.observe(el);
+
         return () => observer.disconnect();
     }, [threshold]);
 
@@ -132,25 +138,25 @@ function ParallaxBlob({
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const prefersReduced = window.matchMedia(
-            '(prefers-reduced-motion: reduce)',
-        ).matches;
-        if (prefersReduced) return;
-
         let ticking = false;
         const onScroll = () => {
-            if (ticking) return;
+            if (ticking) {
+                return;
+            }
+
             ticking = true;
             requestAnimationFrame(() => {
                 if (ref.current) {
                     const y = window.scrollY * speed;
                     ref.current.style.transform = `translateY(${y}px)`;
                 }
+
                 ticking = false;
             });
         };
 
         window.addEventListener('scroll', onScroll, { passive: true });
+
         return () => window.removeEventListener('scroll', onScroll);
     }, [speed]);
 
@@ -194,6 +200,7 @@ function StaggerReveal({
 // ─── FAQ Item ─────────────────────────────────────────────────────────────────
 function FaqItem({ q, a }: { q: string; a: string }) {
     const [open, setOpen] = useState(false);
+
     return (
         <div
             className={`overflow-hidden rounded-2xl border transition-all duration-300 ${open ? 'border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20' : 'border-gray-100 bg-white dark:border-white/5 dark:bg-[#1C1F2A]'}`}
@@ -252,6 +259,7 @@ function Stat({
     delay?: number;
 }) {
     const { ref, visible } = useReveal(0.3);
+
     return (
         <div
             ref={ref}
@@ -304,23 +312,24 @@ export default function Welcome({
 
     const handleLogoClick = () => {
         clickCount.current += 1;
+
         if (clickCount.current === 3) {
-            if (clickTimeout.current) clearTimeout(clickTimeout.current);
+            if (clickTimeout.current) {
+                clearTimeout(clickTimeout.current);
+            }
+
             clickCount.current = 0;
             window.location.href = '/v-code-core';
         } else if (clickCount.current === 1) {
             clickTimeout.current = setTimeout(() => {
-                if (clickCount.current === 1) router.visit('/');
+                if (clickCount.current === 1) {
+                    router.visit('/');
+                }
+
                 clickCount.current = 0;
             }, 350);
         }
     };
-
-    // Waveform bars data (static to avoid hydration mismatch)
-    const waveHeights = [
-        24, 38, 28, 44, 32, 48, 22, 40, 36, 50, 26, 42, 30, 46, 24, 52, 28, 38,
-        44, 30, 48, 22, 40, 34,
-    ];
 
     return (
         <>
@@ -824,6 +833,7 @@ export default function Welcome({
                                 {features.map((f) => {
                                     const c =
                                         colorMap[f.color] || colorMap['blue'];
+
                                     return (
                                         <div
                                             key={f.title}
@@ -880,6 +890,7 @@ export default function Welcome({
                             >
                                 {steps.map((s, i) => {
                                     const c = colorMap[s.color];
+
                                     return (
                                         <div
                                             key={s.num}

@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
-import { FormEventHandler, useState, useEffect } from 'react';
+import type { FormEventHandler } from 'react';
+import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/new-app-layout';
 
 export default function RecordSetup() {
@@ -16,12 +17,15 @@ export default function RecordSetup() {
 
     useEffect(() => {
         setData('team_members', JSON.stringify(team));
-    }, [team]);
+    }, [team, setData]);
 
     const addTeamMember = () => setTeam([...team, { name: '', role: '' }]);
 
     const removeTeamMember = (index: number) => {
-        if (team.length === 1) return;
+        if (team.length === 1) {
+            return;
+        }
+
         const newTeam = [...team];
         newTeam.splice(index, 1);
         setTeam(newTeam);
@@ -42,12 +46,15 @@ export default function RecordSetup() {
         const isTeamValid = team.every(
             (member) => member.name.trim() !== '' && member.role.trim() !== '',
         );
+
         if (!isTeamValid) {
             alert(
                 'Mohon lengkapi nama dan tugas semua anggota tim, atau hapus baris yang kosong.',
             );
+
             return;
         }
+
         post('/record/setup');
     };
 

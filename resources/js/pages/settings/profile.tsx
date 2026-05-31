@@ -1,9 +1,8 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
-import DeleteUser from '@/components/delete-user';
 import InputError from '@/components/input-error';
-import { send } from '@/routes/verification';
 import AppLayout from '@/layouts/new-app-layout';
+import { send } from '@/routes/verification';
 
 const inputClass =
     'w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-blue-500 dark:focus:bg-white/10 dark:focus:ring-blue-500/20';

@@ -1,7 +1,6 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, HomeIcon, LayoutGrid } from 'lucide-react';
+import { HomeIcon } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -26,7 +25,7 @@ const mainNavItems: NavItem[] = [
         title: 'Beranda',
         href: dashboard(),
         icon: HomeIcon,
-    }
+    },
 ];
 
 // const footerNavItems: NavItem[] = [

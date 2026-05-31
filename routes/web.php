@@ -33,14 +33,14 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-// ─── ENDPOINT API STT & DEBUG LOG ───
-Route::post('/api/transcribe', [CodeBlueController::class, 'transcribe'])->name('api.transcribe');
-// Endpoint untuk menyimpan log debug dari proses STT di frontend (misal: waktu pengiriman audio, hasil transkripsi sementara, error, dll)
-Route::post('/api/code-blue/debug-log', [CodeBlueController::class, 'storeDebugLog'])->name('api.debug-log');
-// View untuk melihat log debug untuk bantuan debugging
-Route::get('/api/code-blue/debug-log/{sessionId}', [CodeBlueController::class, 'getDebugLogs'])->name('api.get-debug-log');
-
 Route::middleware(['auth', 'verified'])->group(function () {
+    // ─── ENDPOINT API STT & DEBUG LOG ───
+    Route::post('/api/transcribe', [CodeBlueController::class, 'transcribe'])->name('api.transcribe');
+    // Endpoint untuk menyimpan log debug dari proses STT di frontend (misal: waktu pengiriman audio, hasil transkripsi sementara, error, dll)
+    Route::post('/api/code-blue/debug-log', [CodeBlueController::class, 'storeDebugLog'])->name('api.debug-log');
+    // View untuk melihat log debug untuk bantuan debugging
+    Route::get('/api/code-blue/debug-log/{sessionId}', [CodeBlueController::class, 'getDebugLogs'])->name('api.get-debug-log');
+
     Route::get('/dashboard', [CodeBlueController::class, 'index'])->name('dashboard');
     Route::get('/riwayat', [CodeBlueController::class, 'history'])->name('riwayat');
 
