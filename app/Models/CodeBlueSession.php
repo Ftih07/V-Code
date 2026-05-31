@@ -10,7 +10,7 @@ class CodeBlueSession extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'patient_id', 'leader_name', 'team_members', 'incident_type',
+        'user_id', 'patient_id', 'leader_name', 'recorder_name', 'team_members', 'incident_type',
         'start_time', 'end_time', 'duration_seconds', 'status', 'additional_notes',
         'assessment_condition', 'ttv_time', 'ttv_td', 'ttv_nadi', 'ttv_rr', 'ttv_spo2', 'ttv_gcs',
         'evaluation_result', 'evaluation_plan', 'audio_path',

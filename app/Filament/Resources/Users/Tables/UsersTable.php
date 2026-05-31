@@ -55,6 +55,17 @@ class UsersTable
                     // Sembunyikan tombol jika user sudah di-approve
                     ->hidden(fn (User $record): bool => $record->email_verified_at !== null),
 
+                // Tombol Revoke Access
+                Action::make('revoke_access')
+                    ->label('Cabut Akses')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger') // Warna merah
+                    ->requiresConfirmation()
+                    ->modalHeading('Cabut Akses User')
+                    ->modalDescription('Apakah Anda yakin ingin mencabut akses user ini ke sistem? Mereka harus di-approve ulang untuk bisa masuk.')
+                    ->action(fn (User $record) => $record->update(['email_verified_at' => null]))
+                    ->hidden(fn (User $record): bool => $record->email_verified_at === null),
+
                 EditAction::make(),
             ])
             ->toolbarActions([

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\CodeBlueSessions\Tables;
 
 use App\Models\CodeBlueSession;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Layout\Panel;
@@ -31,7 +33,7 @@ class CodeBlueSessionsTable
                         ->color('primary')
                         ->extraAttributes(['style' => 'font-size: 1.125rem !important;']) // Ganti size('lg')
                         ->description(
-                            fn ($record) => 'RM: ' . ($record->patient?->rm_number ?? '-')
+                            fn ($record) => 'RM: '.($record->patient?->rm_number ?? '-')
                         ),
 
                     TextColumn::make('status')
@@ -76,14 +78,17 @@ class CodeBlueSessionsTable
 
                         TextColumn::make('user.name')
                             ->label('Pencatat')
-                            ->description(fn ($record) => 'Leader: ' . ($record->leader_name ?? '-')),
+                            ->description(fn ($record) => 'Leader: '.($record->leader_name ?? '-')),
 
                         TextColumn::make('duration_seconds')
                             ->label('Durasi')
                             ->formatStateUsing(function (?int $state): string {
-                                if (! $state) return '-';
+                                if (! $state) {
+                                    return '-';
+                                }
                                 $m = intdiv($state, 60);
                                 $s = $state % 60;
+
                                 return sprintf('%d mnt %02d dtk', $m, $s);
                             })
                             ->badge()
@@ -145,7 +150,11 @@ class CodeBlueSessionsTable
                     ->color('primary'),
             ])
 
-            ->bulkActions([])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ])
 
             ->striped(false)
 

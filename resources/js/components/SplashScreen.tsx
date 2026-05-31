@@ -26,8 +26,8 @@ export default function SplashScreen() {
     useEffect(() => {
         // 2. Kalau pas mounting ternyata sudah harus sembunyi (atau tidak visible), berhenti.
         if (!visible) {
-return;
-}
+            return;
+        }
 
         // 3. Langsung set timer animasi
         const hideTimer = setTimeout(() => {
@@ -68,33 +68,31 @@ return;
             {/* Logo mark */}
             <div
                 style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 22,
-                    background: '#2563EB',
+                    width: 90, // Dibesarkan sedikit supaya pas dengan logo V
+                    height: 90,
+                    borderRadius: 24,
+                    background: '#ffffff', // Background putih
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 16px 40px rgba(37,99,235,0.30)',
+                    padding: '12px', // Kasih ruang napas untuk logo
+                    boxShadow:
+                        '0 16px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)', // Shadow lebih elegan
                     marginBottom: 20,
                     animation:
                         'vcode-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                 }}
+                className="dark:bg-[#1e2330] dark:shadow-none dark:ring-1 dark:shadow-blue-900/10 dark:ring-white/10"
             >
-                <svg
-                    width="36"
-                    height="36"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="1.8"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                    />
-                </svg>
+                <img
+                    src="/apple-touch-icon.png"
+                    alt="V-Code Logo"
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                    }}
+                />
             </div>
 
             {/* App name */}

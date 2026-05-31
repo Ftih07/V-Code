@@ -37,20 +37,14 @@ export default function VerifyEmail() {
                 <div className="relative w-full max-w-[400px]">
                     {/* Logo */}
                     <div className="mb-8 flex flex-col items-center gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-200 dark:shadow-blue-900/40">
-                            <svg
-                                className="h-7 w-7 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                />
-                            </svg>
+                        {/* Logo mark */}
+                        <div className="flex h-20 w-20 items-center justify-center">
+                            {/* Pastikan path src mengarah ke file gambar logo yang benar di folder public */}
+                            <img
+                                src="/apple-touch-icon.png"
+                                alt="V-Code Logo"
+                                className="h-full w-full object-contain drop-shadow-sm"
+                            />
                         </div>
                         <div className="text-center">
                             <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">

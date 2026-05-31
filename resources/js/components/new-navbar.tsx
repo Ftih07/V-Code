@@ -79,16 +79,16 @@ export default function NewNavbar({
         const currentPath = url.split('?')[0];
 
         if (href === '/dashboard') {
-return currentPath === '/dashboard' || currentPath === '/';
-}
+            return currentPath === '/dashboard' || currentPath === '/';
+        }
 
         if (href === '/riwayat') {
-return currentPath === '/riwayat';
-}
+            return currentPath === '/riwayat';
+        }
 
         if (href === '/settings/profile') {
-return currentPath === '/settings/profile';
-}
+            return currentPath === '/settings/profile';
+        }
 
         return currentPath.startsWith(href);
     };
@@ -99,20 +99,13 @@ return currentPath === '/settings/profile';
             <header className="fixed top-0 right-0 left-0 z-40 flex h-16 items-center justify-between border-b border-gray-100 bg-white/90 px-4 backdrop-blur-md transition-colors duration-300 md:hidden dark:border-white/5 dark:bg-[#141720]/90">
                 {/* Kiri: Logo & Nama App */}
                 <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 shadow-sm">
-                        <svg
-                            className="h-4 w-4 text-white"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                            />
-                        </svg>
+                    {/* LOGO MOBILE */}
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
+                        <img
+                            src="/apple-touch-icon.png"
+                            alt="V-Code Logo"
+                            className="h-full w-full object-contain"
+                        />
                     </div>
                     <p className="text-sm font-black tracking-widest text-gray-900 dark:text-white">
                         V-CODE
@@ -186,7 +179,6 @@ return currentPath === '/settings/profile';
                 className="fixed right-0 bottom-5 left-0 z-[999] flex flex-col items-center px-4 md:hidden"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-                {/* KAPSUL NAVBAR BAWAH */}
                 <nav className="flex h-[64px] w-full max-w-sm items-center justify-around rounded-[2rem] border border-white/60 bg-white/85 px-6 shadow-[0_8px_32px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-700/60 dark:bg-slate-900/85 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
                     {navigationItems.map((item) => {
                         const active = isUrlActive(item.href);
@@ -195,7 +187,6 @@ return currentPath === '/settings/profile';
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                // Lebar dibesarkan (w-20) agar area tap lebih luas
                                 className={`flex w-20 flex-col items-center justify-center gap-1 transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}
                             >
                                 <div
@@ -212,7 +203,7 @@ return currentPath === '/settings/profile';
                 </nav>
             </div>
 
-            {/* ── DESKTOP SIDEBAR (TIDAK ADA YANG DIUBAH) ── */}
+            {/* ── DESKTOP SIDEBAR ── */}
             <aside
                 className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-100 bg-white transition-all duration-300 ease-in-out md:flex dark:border-white/5 dark:bg-[#141720] ${isSidebarOpen ? 'w-64' : 'w-20'}`}
             >
@@ -222,20 +213,13 @@ return currentPath === '/settings/profile';
                 >
                     {isSidebarOpen && (
                         <div className="flex items-center gap-2.5 overflow-hidden">
-                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600">
-                                <svg
-                                    className="h-4 w-4 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                    />
-                                </svg>
+                            {/* LOGO DESKTOP BUKA */}
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
+                                <img
+                                    src="/apple-touch-icon.png"
+                                    alt="V-Code Logo"
+                                    className="h-full w-full object-contain"
+                                />
                             </div>
                             <div className="min-w-0">
                                 <p className="text-sm font-black tracking-widest text-gray-900 dark:text-white">
@@ -249,20 +233,13 @@ return currentPath === '/settings/profile';
                     )}
 
                     {!isSidebarOpen && (
-                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600">
-                            <svg
-                                className="h-4 w-4 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                                />
-                            </svg>
+                        /* LOGO DESKTOP TUTUP */
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
+                            <img
+                                src="/apple-touch-icon.png"
+                                alt="V-Code Logo"
+                                className="h-full w-full object-contain"
+                            />
                         </div>
                     )}
 

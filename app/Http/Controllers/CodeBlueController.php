@@ -87,12 +87,11 @@ class CodeBlueController extends Controller
 
     public function startSession(Request $request)
     {
+        // Validation untuk Leader dan Team dihilangkan
         $request->validate([
             'name' => 'required|string|max:255',
             'rm_number' => 'required|string|max:50',
             'ward_location' => 'required|string|max:100',
-            'leader_name' => 'required|string|max:255',
-            'team_members' => 'required|string',
             'incident_type' => 'required|string',
         ]);
 
@@ -104,8 +103,6 @@ class CodeBlueController extends Controller
 
         return redirect()->route('record.create', [
             'patient' => $patient->id,
-            'leader_name' => $request->leader_name,
-            'team_members' => $request->team_members,
             'incident_type' => $request->incident_type,
         ]);
     }
@@ -114,8 +111,6 @@ class CodeBlueController extends Controller
     {
         return Inertia::render('record', [
             'patient' => $patient,
-            'leader_name' => $request->query('leader_name'),
-            'team_members' => $request->query('team_members'),
             'incident_type' => $request->query('incident_type'),
         ]);
     }
@@ -136,8 +131,10 @@ class CodeBlueController extends Controller
         $session = CodeBlueSession::create([
             'user_id' => $request->user()->id,
             'patient_id' => $request->patient_id,
-            'leader_name' => $request->leader_name,
-            'team_members' => $request->team_members,
+            // Set null dulu karena baru akan diisi saat Review
+            'leader_name' => null,
+            'recorder_name' => $request->user()->name, // Default pencatat ambil dari user login dulu
+            'team_members' => null,
             'incident_type' => $request->incident_type,
             'start_time' => now()->subSeconds($request->duration_seconds),
             'end_time' => now(),
@@ -175,7 +172,6 @@ class CodeBlueController extends Controller
     public function summary(CodeBlueSession $codeBlueSession)
     {
         abort_if($codeBlueSession->user_id != auth()->id(), 403, 'Akses ditolak.');
-
         $codeBlueSession->load(['user', 'logs']);
 
         return Inertia::render('record-summary', ['sessionData' => $codeBlueSession]);
@@ -193,13 +189,20 @@ class CodeBlueController extends Controller
     {
         abort_if($codeBlueSession->user_id != auth()->id(), 403, 'Akses ditolak.');
 
+        // Tambah validasi untuk Tim Code Blue
         $request->validate([
+            'leader_name' => 'required|string|max:255',
+            'recorder_name' => 'required|string|max:255',
+            'team_members' => 'required|string',
             'additional_notes' => 'nullable|string',
             'logs' => 'array',
             'assessment_condition' => 'nullable|string',
         ]);
 
         $codeBlueSession->update([
+            'leader_name' => $request->leader_name,
+            'recorder_name' => $request->recorder_name, // Menyimpan input pencatat manual
+            'team_members' => $request->team_members,
             'additional_notes' => $request->additional_notes,
             'assessment_condition' => $request->assessment_condition,
             'ttv_time' => $request->ttv_time,
