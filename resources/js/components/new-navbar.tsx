@@ -19,6 +19,7 @@ export default function NewNavbar({
         {
             name: 'Beranda',
             href: '/dashboard',
+            tourClass: 'tour-nav-beranda',
             icon: (
                 <svg
                     className="h-5 w-5 flex-shrink-0"
@@ -38,6 +39,7 @@ export default function NewNavbar({
         {
             name: 'Riwayat',
             href: '/riwayat',
+            tourClass: 'tour-nav-riwayat',
             icon: (
                 <svg
                     className="h-5 w-5 flex-shrink-0"
@@ -57,6 +59,7 @@ export default function NewNavbar({
         {
             name: 'Profil',
             href: '/settings/profile',
+            tourClass: 'tour-nav-profil',
             icon: (
                 <svg
                     className="h-5 w-5 flex-shrink-0"
@@ -77,19 +80,11 @@ export default function NewNavbar({
 
     const isUrlActive = (href: string) => {
         const currentPath = url.split('?')[0];
-
-        if (href === '/dashboard') {
+        if (href === '/dashboard')
             return currentPath === '/dashboard' || currentPath === '/';
-        }
-
-        if (href === '/riwayat') {
-            return currentPath === '/riwayat';
-        }
-
-        if (href === '/settings/profile') {
+        if (href === '/riwayat') return currentPath === '/riwayat';
+        if (href === '/settings/profile')
             return currentPath === '/settings/profile';
-        }
-
         return currentPath.startsWith(href);
     };
 
@@ -97,9 +92,7 @@ export default function NewNavbar({
         <>
             {/* ── MOBILE TOP HEADER ── */}
             <header className="fixed top-0 right-0 left-0 z-40 flex h-16 items-center justify-between border-b border-gray-100 bg-white/90 px-4 backdrop-blur-md transition-colors duration-300 md:hidden dark:border-white/5 dark:bg-[#141720]/90">
-                {/* Kiri: Logo & Nama App */}
                 <div className="flex items-center gap-2.5">
-                    {/* LOGO MOBILE */}
                     <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
                         <img
                             src="/apple-touch-icon.png"
@@ -112,12 +105,11 @@ export default function NewNavbar({
                     </p>
                 </div>
 
-                {/* Kanan: Aksi (Theme & Logout) */}
                 <div className="flex items-center gap-1">
-                    {/* Theme Toggle Mobile */}
+                    {/* tour-nav-theme hanya ada di mobile header, desktop ada di sidebar bottom */}
                     <button
                         onClick={toggleTheme}
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-white/10"
+                        className="tour-nav-theme flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-white/10"
                     >
                         {theme === 'light' ? (
                             <svg
@@ -150,12 +142,12 @@ export default function NewNavbar({
                         )}
                     </button>
 
-                    {/* Logout Mobile */}
                     <Link
                         href="/logout"
                         method="post"
                         as="button"
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                        // Tambahkan tour-nav-logout di bawah ini
+                        className="tour-nav-logout flex h-9 w-9 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
                     >
                         <svg
                             className="h-5 w-5"
@@ -179,15 +171,19 @@ export default function NewNavbar({
                 className="fixed right-0 bottom-5 left-0 z-[999] flex flex-col items-center px-4 md:hidden"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-                <nav className="flex h-[64px] w-full max-w-sm items-center justify-around rounded-[2rem] border border-white/60 bg-white/85 px-6 shadow-[0_8px_32px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-700/60 dark:bg-slate-900/85 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
+                {/*
+                    tour-nav-mobile: target keseluruhan bottom navbar untuk tour step pertama di mobile.
+                    Tiap item juga punya tourClass sendiri (tour-nav-beranda, dll) supaya bisa
+                    di-spotlight per item jika dibutuhkan.
+                */}
+                <nav className="tour-nav-mobile flex h-[64px] w-full max-w-sm items-center justify-around rounded-[2rem] border border-white/60 bg-white/85 px-6 shadow-[0_8px_32px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-700/60 dark:bg-slate-900/85 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
                     {navigationItems.map((item) => {
                         const active = isUrlActive(item.href);
-
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex w-20 flex-col items-center justify-center gap-1 transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}
+                                className={`${item.tourClass} flex w-20 flex-col items-center justify-center gap-1 transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}
                             >
                                 <div
                                     className={`flex items-center justify-center rounded-2xl p-2 transition-all duration-200 ${active ? 'scale-110 bg-blue-600 text-white shadow-lg shadow-blue-200/50 dark:bg-blue-500 dark:shadow-blue-900/40' : 'bg-transparent'}`}
@@ -213,7 +209,6 @@ export default function NewNavbar({
                 >
                     {isSidebarOpen && (
                         <div className="flex items-center gap-2.5 overflow-hidden">
-                            {/* LOGO DESKTOP BUKA */}
                             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
                                 <img
                                     src="/apple-touch-icon.png"
@@ -233,7 +228,6 @@ export default function NewNavbar({
                     )}
 
                     {!isSidebarOpen && (
-                        /* LOGO DESKTOP TUTUP */
                         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-gray-900/5 dark:bg-[#1e2330] dark:ring-white/10">
                             <img
                                 src="/apple-touch-icon.png"
@@ -290,21 +284,12 @@ export default function NewNavbar({
                 <nav className="flex-1 space-y-1 overflow-y-auto p-3">
                     {navigationItems.map((item) => {
                         const active = isUrlActive(item.href);
-
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
                                 title={!isSidebarOpen ? item.name : undefined}
-                                className={`group flex items-center gap-3 rounded-xl py-2.5 text-sm font-semibold transition-all duration-200 ${
-                                    isSidebarOpen
-                                        ? 'px-3'
-                                        : 'justify-center px-0'
-                                } ${
-                                    active
-                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
-                                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200'
-                                }`}
+                                className={`${item.tourClass} group flex items-center gap-3 rounded-xl py-2.5 text-sm font-semibold transition-all duration-200 ${isSidebarOpen ? 'px-3' : 'justify-center px-0'} ${active ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200'}`}
                             >
                                 {active && isSidebarOpen && (
                                     <span className="absolute left-3 h-5 w-0.5 rounded-full bg-blue-500" />
@@ -324,7 +309,7 @@ export default function NewNavbar({
                     })}
                 </nav>
 
-                {/* Bottom Actions: Theme Toggle & Logout */}
+                {/* Bottom Actions */}
                 <div className="flex-shrink-0 space-y-1 border-t border-gray-100 p-3 dark:border-white/5">
                     <button
                         onClick={toggleTheme}
@@ -335,7 +320,13 @@ export default function NewNavbar({
                                     : 'Mode Terang'
                                 : undefined
                         }
-                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-500 transition-all duration-200 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200 ${isSidebarOpen ? 'px-3' : 'justify-center px-0'}`}
+                        className="tour-nav-theme group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-500 transition-all duration-200 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200"
+                        style={{
+                            paddingLeft: isSidebarOpen ? undefined : 0,
+                            justifyContent: isSidebarOpen
+                                ? undefined
+                                : 'center',
+                        }}
                     >
                         <span className="flex-shrink-0 text-gray-400 group-hover:text-gray-600 dark:text-zinc-500 dark:group-hover:text-zinc-300">
                             {theme === 'light' ? (
@@ -382,7 +373,8 @@ export default function NewNavbar({
                         method="post"
                         as="button"
                         title={!isSidebarOpen ? 'Keluar Sistem' : undefined}
-                        className={`group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-400 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 ${isSidebarOpen ? 'px-3' : 'justify-center px-0'}`}
+                        // Tambahkan tour-nav-logout di bawah ini
+                        className={`tour-nav-logout group flex w-full items-center gap-3 rounded-xl py-2.5 text-sm font-semibold text-gray-400 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 ${isSidebarOpen ? 'px-3' : 'justify-center px-0'}`}
                     >
                         <svg
                             className="h-5 w-5 flex-shrink-0"

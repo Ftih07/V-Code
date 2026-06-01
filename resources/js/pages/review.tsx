@@ -3,6 +3,69 @@ import axios from 'axios';
 import type { FormEventHandler } from 'react';
 import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/new-app-layout';
+import ProductTour from '@/components/ProductTour'; // Pastikan path ini benar
+
+// ─── Ikon Tour ───────────────────────────────────────────────────────────────
+const IconReviewTour = () => (
+    <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+    >
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+        />
+    </svg>
+);
+
+// ─── Konfigurasi Langkah Tour ────────────────────────────────────────────────
+const REVIEW_TOUR_STEPS = [
+    {
+        target: '.tour-review-patient',
+        title: 'Verifikasi Pasien',
+        content:
+            'Pastikan seluruh data yang akan Anda tinjau ini benar-benar sesuai dengan identitas pasien yang bersangkutan.',
+        icon: <IconReviewTour />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-review-team',
+        title: 'Kehadiran Tim',
+        content:
+            'Lengkapi nama dan peran setiap anggota tim yang terlibat. Anda dapat menambah atau menghapus baris sesuai kebutuhan.',
+        icon: <IconReviewTour />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-review-audio',
+        title: 'Putar Ulang Rekaman',
+        content:
+            'Jika ada catatan yang terlewat, Anda dapat mendengarkan kembali rekaman audio asli dari sesi Code Blue ini.',
+        icon: <IconReviewTour />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-review-tabs',
+        title: 'Tinjau Dokumentasi',
+        content:
+            'Periksa kembali hasil STT (Speech-to-Text). Data telah dipisahkan menjadi Pengkajian, Tindakan, dan Evaluasi agar lebih mudah dibaca.',
+        icon: <IconReviewTour />,
+        placement: 'top' as const,
+    },
+    {
+        target: '.tour-review-submit',
+        title: 'Finalisasi',
+        content:
+            'Setelah semua data dikoreksi dan valid, klik tombol ini untuk menyimpannya ke sistem EMR. Data yang sudah difinalisasi tidak dapat diubah lagi.',
+        icon: <IconReviewTour />,
+        placement: 'top' as const,
+    },
+];
 
 // ─── Shared input class ───────────────────────────────────────────────────────
 const inputClass =
@@ -62,6 +125,7 @@ export default function Review({ sessionData }: any) {
         if (sessionData.team_members) {
             try {
                 const parsed = JSON.parse(sessionData.team_members);
+
                 return Array.isArray(parsed) && parsed.length > 0
                     ? parsed
                     : [{ name: '', role: '' }];
@@ -69,6 +133,7 @@ export default function Review({ sessionData }: any) {
                 return [{ name: '', role: '' }];
             }
         }
+
         return [{ name: '', role: '' }];
     });
 
@@ -98,7 +163,10 @@ export default function Review({ sessionData }: any) {
 
     const addTeamMember = () => setTeam([...team, { name: '', role: '' }]);
     const removeTeamMember = (index: number) => {
-        if (team.length === 1) return;
+        if (team.length === 1) {
+            return;
+        }
+
         const newTeam = [...team];
         newTeam.splice(index, 1);
         setTeam(newTeam);
@@ -130,10 +198,12 @@ export default function Review({ sessionData }: any) {
         const isTeamValid = team.every(
             (member) => member.name.trim() !== '' && member.role.trim() !== '',
         );
+
         if (!isTeamValid) {
             alert(
                 'Mohon lengkapi nama dan tugas semua anggota tim, atau hapus baris yang kosong.',
             );
+
             return;
         }
 
@@ -143,6 +213,7 @@ export default function Review({ sessionData }: any) {
     const openDebugLog = async () => {
         setShowLogModal(true);
         setIsLoadingLogs(true);
+
         try {
             const res = await axios.get(
                 `/api/code-blue/debug-log/${sessionData.id}`,
@@ -189,9 +260,23 @@ export default function Review({ sessionData }: any) {
         },
     ] as const;
 
+    // Filter Step Audio jika rekaman tidak ada
+    const activeSteps = sessionData.audio_path
+        ? REVIEW_TOUR_STEPS
+        : REVIEW_TOUR_STEPS.filter(
+              (step) => step.target !== '.tour-review-audio',
+          );
+
     return (
         <>
             <Head title={`Draft Sesi #${sessionData.id} — V-Code`} />
+
+            {/* ── PRODUCT TOUR INJECTION ── */}
+            <ProductTour
+                steps={activeSteps}
+                storageKey="vcode_tour_review_page"
+                startDelay={500}
+            />
 
             <form onSubmit={submit}>
                 <div className="flex flex-col gap-4">
@@ -256,8 +341,8 @@ export default function Review({ sessionData }: any) {
 
                     {/* ── INFO CARDS ── */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {/* Identitas Pasien */}
-                        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                        {/* Identitas Pasien (Target: .tour-review-patient) */}
+                        <div className="tour-review-patient overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                             <div className="border-b border-gray-100 px-4 py-3 dark:border-white/5">
                                 <p className="text-[11px] font-bold tracking-widest text-gray-400 uppercase dark:text-zinc-500">
                                     Identitas Pasien
@@ -318,8 +403,8 @@ export default function Review({ sessionData }: any) {
                             </div>
                         </div>
 
-                        {/* Tim Code Blue (Sekarang Bisa Diedit) */}
-                        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                        {/* Tim Code Blue (Target: .tour-review-team) */}
+                        <div className="tour-review-team overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                             <div className="border-b border-gray-100 px-4 py-3 dark:border-white/5">
                                 <p className="text-[11px] font-bold tracking-widest text-gray-400 uppercase dark:text-zinc-500">
                                     Tim Code Blue
@@ -448,11 +533,9 @@ export default function Review({ sessionData }: any) {
                         </div>
                     </div>
 
-                    {/* ── Sisa Kode di Bawahnya (Audio, Dokumentasi Card, Tab Switcher, Notes) Sama Persis Seperti Aslinya ── */}
-                    {/* ... Biar cepat bisa dipertahankan sama persis dari kode aslinya, aku taruh potongannya di sini */}
-
+                    {/* Rekaman Asli (Target: .tour-review-audio) */}
                     {sessionData.audio_path && (
-                        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                        <div className="tour-review-audio overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                             <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
                                 <span className="text-xs font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
                                     Rekaman Asli
@@ -472,7 +555,8 @@ export default function Review({ sessionData }: any) {
                         </div>
                     )}
 
-                    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                    {/* Tab Tinjau Dokumentasi (Target: .tour-review-tabs) */}
+                    <div className="tour-review-tabs overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
                             <p className="text-sm font-bold text-gray-900 dark:text-white">
                                 Ringkasan Dokumentasi Code Blue
@@ -715,7 +799,7 @@ export default function Review({ sessionData }: any) {
                     </div>
 
                     {/* ── CATATAN TAMBAHAN + SUBMIT ── */}
-                    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                    <div className="tour-review-submit overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                         <div className="border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
                             <p className="text-xs font-bold tracking-widest text-gray-400 uppercase dark:text-zinc-500">
                                 Catatan Tambahan

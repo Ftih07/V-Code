@@ -1,17 +1,157 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/new-app-layout';
+import ProductTour from '@/components/ProductTour';
 
+// ─── Ikon kecil untuk tooltip tour ───────────────────────────────────────────
+const IconMic = () => (
+    <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+    >
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+        />
+    </svg>
+);
+const IconStats = () => (
+    <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+    >
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        />
+    </svg>
+);
+const IconHistory = () => (
+    <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+    >
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+    </svg>
+);
+
+// ─── Ikon (Gabungan dari Navbar & Dashboard) ─────────────────────────────────
+const IconNav = () => (
+    <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+    >
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M4 6h16M4 12h16m-7 6h7"
+        />
+    </svg>
+);
+
+// ─── Konfigurasi Langkah Tour (Digabung) ─────────────────────────────────────
+const COMBINED_TOUR_STEPS = [
+    // --- STEP NAVBAR ---
+    {
+        target: '.tour-nav-beranda',
+        title: 'Menu Beranda',
+        content:
+            'Klik di sini untuk kembali ke halaman utama dan melihat ringkasan aktivitasmu.',
+        icon: <IconNav />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-nav-riwayat',
+        title: 'Riwayat Sesi',
+        content:
+            'Semua rekaman Code Blue yang sudah selesai maupun draf tersimpan rapi di sini.',
+        icon: <IconNav />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-nav-profil',
+        title: 'Pengaturan Profil',
+        content:
+            'Atur detail akun, kata sandi, dan preferensi aplikasimu di menu Profil.',
+        icon: <IconNav />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-nav-theme',
+        title: 'Mode Tampilan',
+        content:
+            'Sesuaikan kenyamanan matamu dengan mengubah mode terang atau gelap lewat tombol ini.',
+        icon: <IconNav />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-nav-logout',
+        title: 'Keluar Sistem',
+        content:
+            'Pastikan untuk keluar dari sistem jika kamu mengakses aplikasi ini dari perangkat umum.',
+        icon: <IconNav />,
+        placement: 'auto' as const,
+    },
+
+    // --- STEP KONTEN DASHBOARD ---
+    {
+        target: '.tour-start-record',
+        title: 'Mulai Rekaman',
+        content:
+            'Klik di sini untuk langsung memulai sesi rekaman Code Blue baru. Ini adalah pintu masuk utama.',
+        icon: <IconMic />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-stats',
+        title: 'Statistik Sesi',
+        content:
+            'Pantau total semua sesi yang pernah dilakukan dan berapa draf yang masih belum difinalisasi.',
+        icon: <IconStats />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-history',
+        title: 'Riwayat Tindakan',
+        content:
+            'Di sini kamu bisa melihat detail rekaman atau melanjutkan draf yang belum selesai.',
+        icon: <IconHistory />,
+        placement: 'auto' as const,
+    },
+];
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 type Session = {
     id: number;
     start_time: string;
     duration_seconds: number;
     status: string;
     created_at: string;
-    patient?: {
-        name?: string;
-    };
+    patient?: { name?: string };
 };
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
     const draftCount = sessions.filter((s) => s.status === 'draft').length;
 
@@ -19,15 +159,28 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
         <>
             <Head title="Dashboard — V-Code" />
 
+            {/* 
+                ProductTour akan otomatis:
+                - Muncul saat pertama kali user visit (localStorage belum ada)
+                - Menyimpan ke localStorage setelah selesai/skip
+                - Tidak muncul lagi di kunjungan berikutnya
+                
+                Untuk RESET tour (debug), hapus key di localStorage:
+                localStorage.removeItem('vcode_tour_dashboard')
+            */}
+            <ProductTour
+                steps={COMBINED_TOUR_STEPS}
+                storageKey="vcode_tour_complete" // Ubah nama key-nya sekalian
+                startDelay={800}
+            />
+
             <div className="flex flex-col gap-5">
                 {/* ── TOP STATS ROW ── */}
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                    {/* CTA: Mulai Rekaman */}
                     <Link
                         href="/record/setup"
-                        className="group relative col-span-2 flex items-center gap-5 overflow-hidden rounded-2xl bg-blue-600 p-5 shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-200/60 md:col-span-1 md:flex-col md:items-start md:gap-3 md:p-6 dark:shadow-blue-900/30"
+                        className="tour-start-record group relative col-span-2 flex items-center gap-5 overflow-hidden rounded-2xl bg-blue-600 p-5 shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-200/60 md:col-span-1 md:flex-col md:items-start md:gap-3 md:p-6 dark:shadow-blue-900/30"
                     >
-                        {/* Decorative circle */}
                         <div className="absolute -top-8 -right-8 h-36 w-36 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-125" />
                         <div className="absolute -right-4 -bottom-6 h-20 w-20 rounded-full bg-white/5" />
 
@@ -73,66 +226,64 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
                         </div>
                     </Link>
 
-                    {/* Stat: Total Sesi */}
-                    <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#1C1F2A]">
-                        <div className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
-                            <svg
-                                className="h-4 w-4 text-blue-600 dark:text-blue-400"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                />
-                            </svg>
+                    <div className="tour-stats col-span-2 grid grid-cols-2 gap-4 md:col-span-2">
+                        <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#1C1F2A]">
+                            <div className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+                                <svg
+                                    className="h-4 w-4 text-blue-600 dark:text-blue-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                    />
+                                </svg>
+                            </div>
+                            <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase dark:text-zinc-500">
+                                Total Sesi
+                            </p>
+                            <p className="mt-2 text-3xl font-black text-gray-900 tabular-nums dark:text-white">
+                                {sessions.length}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                                Semua dokumentasi
+                            </p>
                         </div>
-                        <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase dark:text-zinc-500">
-                            Total Sesi
-                        </p>
-                        <p className="mt-2 text-3xl font-black text-gray-900 tabular-nums dark:text-white">
-                            {sessions.length}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
-                            Semua dokumentasi
-                        </p>
-                    </div>
 
-                    {/* Stat: Draf */}
-                    <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#1C1F2A]">
-                        <div className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
-                            <svg
-                                className="h-4 w-4 text-amber-500"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                />
-                            </svg>
+                        <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#1C1F2A]">
+                            <div className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
+                                <svg
+                                    className="h-4 w-4 text-amber-500"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                </svg>
+                            </div>
+                            <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase dark:text-zinc-500">
+                                Draf
+                            </p>
+                            <p className="mt-2 text-3xl font-black text-amber-500 tabular-nums">
+                                {draftCount}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                                Belum difinalisasi
+                            </p>
                         </div>
-                        <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase dark:text-zinc-500">
-                            Draf
-                        </p>
-                        <p className="mt-2 text-3xl font-black text-amber-500 tabular-nums">
-                            {draftCount}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
-                            Belum difinalisasi
-                        </p>
                     </div>
                 </div>
 
-                {/* ── HISTORY LIST ── */}
-                <div className="rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
-                    {/* Header */}
+                <div className="tour-history rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                     <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-white/5">
                         <div className="flex items-center gap-2.5">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
@@ -180,7 +331,6 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
                         </Link>
                     </div>
 
-                    {/* Items */}
                     <div className="divide-y divide-gray-50 dark:divide-white/[0.04]">
                         {sessions.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -228,9 +378,7 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
                                         href={`/draft/${session.id}`}
                                         className="group flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[0.02]"
                                     >
-                                        {/* Left: icon + info */}
                                         <div className="flex min-w-0 items-center gap-3.5">
-                                            {/* Avatar / icon */}
                                             <div
                                                 className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${isDraft ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}
                                             >
@@ -264,8 +412,6 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
                                                     </svg>
                                                 )}
                                             </div>
-
-                                            {/* Text */}
                                             <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <span className="truncate text-sm font-bold text-gray-800 transition-colors group-hover:text-blue-600 dark:text-zinc-200 dark:group-hover:text-blue-400">
@@ -278,19 +424,13 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
                                                     </span>
                                                 </div>
                                                 <div className="mt-0.5 flex items-center gap-2">
-                                                    {/* Status badge */}
                                                     <span
-                                                        className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
-                                                            isDraft
-                                                                ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
-                                                                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                                        }`}
+                                                        className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ${isDraft ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'}`}
                                                     >
                                                         {isDraft
                                                             ? 'Draf'
                                                             : 'Selesai'}
                                                     </span>
-                                                    {/* Date */}
                                                     <span className="truncate text-[11px] text-gray-400 dark:text-zinc-500">
                                                         {new Date(
                                                             session.created_at,
@@ -308,8 +448,6 @@ export default function Dashboard({ sessions = [] }: { sessions: Session[] }) {
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Right: duration + arrow */}
                                         <div className="flex flex-shrink-0 items-center gap-3">
                                             {session.duration_seconds ? (
                                                 <div className="hidden items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-1.5 sm:flex dark:border-white/5 dark:bg-white/5">

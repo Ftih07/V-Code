@@ -1,5 +1,40 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/new-app-layout';
+import ProductTour from '@/components/ProductTour'; // Pastikan path ini benar
+
+// ─── Ikon Tour ───────────────────────────────────────────────────────────────
+const IconCheck = () => (
+    <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+    >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+);
+
+// ─── Konfigurasi Langkah Tour ────────────────────────────────────────────────
+const SUMMARY_TOUR_STEPS = [
+    {
+        target: '.tour-summary-card',
+        title: 'Ringkasan Tersimpan',
+        content:
+            'Data durasi, waktu mulai, dan total tindakan selama Code Blue telah diamankan ke dalam sistem sebagai draf sementara.',
+        icon: <IconCheck />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-action-edit',
+        title: 'Langkah Selanjutnya',
+        content:
+            'Ketuk tombol ini untuk meninjau transkripsi, melengkapi formulir medis (EMR), dan melakukan finalisasi data.',
+        icon: <IconCheck />,
+        placement: 'top' as const, // Dipaksa ke atas agar tidak terpotong di layar HP
+    },
+];
 
 export default function RecordSummary({ sessionData }: any) {
     const totalEntries = sessionData.logs ? sessionData.logs.length : 0;
@@ -9,24 +44,16 @@ export default function RecordSummary({ sessionData }: any) {
             .toString()
             .padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-    const parseTeam = () => {
-        try {
-            const parsed =
-                typeof sessionData.team_members === 'string'
-                    ? JSON.parse(sessionData.team_members)
-                    : sessionData.team_members;
-
-            return Array.isArray(parsed) ? parsed : [];
-        } catch {
-            return [];
-        }
-    };
-
-    const teamMembers = parseTeam();
-
     return (
         <>
             <Head title="Perekaman Selesai — V-Code" />
+
+            {/* ── PRODUCT TOUR INJECTION ── */}
+            <ProductTour
+                steps={SUMMARY_TOUR_STEPS}
+                storageKey="vcode_tour_summary_page"
+                startDelay={500}
+            />
 
             <div className="flex justify-center">
                 <div className="w-full max-w-lg">
@@ -61,8 +88,8 @@ export default function RecordSummary({ sessionData }: any) {
                         </span>
                     </div>
 
-                    {/* ── RINGKASAN DOKUMENTASI ── */}
-                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                    {/* ── RINGKASAN DOKUMENTASI (Target: .tour-summary-card) ── */}
+                    <div className="tour-summary-card mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                         <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
                             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
                                 <svg
@@ -174,90 +201,12 @@ export default function RecordSummary({ sessionData }: any) {
                         </div>
                     </div>
 
-                    {/* ── TIM CODE BLUE ── */}
-                    <div className="mb-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
-                        <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
-                                <svg
-                                    className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                                    />
-                                </svg>
-                            </div>
-                            <span className="text-xs font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
-                                Tim Respon Code Blue
-                            </span>
-                        </div>
-
-                        <div className="divide-y divide-gray-50 dark:divide-white/[0.04]">
-                            {/* Leader */}
-                            <div className="flex items-center justify-between px-5 py-3.5">
-                                <span className="text-sm text-gray-500 dark:text-zinc-400">
-                                    Leader Tim
-                                </span>
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                    {sessionData.leader_name || '—'}
-                                </span>
-                            </div>
-
-                            {/* Dokumentator */}
-                            <div className="flex items-center justify-between px-5 py-3.5">
-                                <span className="text-sm text-gray-500 dark:text-zinc-400">
-                                    Dokumentator
-                                </span>
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                    {sessionData.user?.name || '—'}
-                                </span>
-                            </div>
-
-                            {/* Anggota tim */}
-                            {teamMembers.length > 0 && (
-                                <div className="px-5 py-3.5">
-                                    <p className="mb-2.5 text-sm text-gray-500 dark:text-zinc-400">
-                                        Anggota Tim
-                                    </p>
-                                    <div className="space-y-2">
-                                        {teamMembers.map(
-                                            (m: any, i: number) => (
-                                                <div
-                                                    key={i}
-                                                    className="flex items-center justify-between gap-3"
-                                                >
-                                                    <div className="flex min-w-0 items-center gap-2">
-                                                        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-blue-50 font-mono text-[10px] font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-                                                            {String(
-                                                                i + 1,
-                                                            ).padStart(2, '0')}
-                                                        </span>
-                                                        <span className="truncate text-sm font-bold text-gray-800 dark:text-zinc-200">
-                                                            {m.name || '—'}
-                                                        </span>
-                                                    </div>
-                                                    <span className="flex-shrink-0 rounded-md bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-zinc-400">
-                                                        {m.role || '—'}
-                                                    </span>
-                                                </div>
-                                            ),
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
                     {/* ── ACTION BUTTONS ── */}
                     <div className="flex flex-col gap-3 pb-24 md:pb-6">
+                        {/* Target: .tour-action-edit */}
                         <Link
                             href={`/draft/${sessionData.id}`}
-                            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-200/50 transition hover:bg-blue-700 active:scale-[0.98] dark:shadow-blue-900/20"
+                            className="tour-action-edit flex w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-200/50 transition hover:bg-blue-700 active:scale-[0.98] dark:shadow-blue-900/20"
                         >
                             <svg
                                 className="h-4 w-4"
@@ -274,6 +223,7 @@ export default function RecordSummary({ sessionData }: any) {
                             </svg>
                             Edit Draft &amp; Kirim ke EMR
                         </Link>
+
                         <Link
                             href="/dashboard"
                             className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-gray-200 bg-white py-4 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-white/10"

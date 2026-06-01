@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import AppLayout from '@/layouts/new-app-layout';
+import ProductTour from '@/components/ProductTour'; // Pastikan path ini benar
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type SessionLog = {
@@ -226,6 +227,59 @@ const FALLBACK_CLASSIFY_RULES: ClassifyRule[] = [
         category: 'pengkajian',
         target_field: 'assessment_condition',
         priority: 20,
+    },
+];
+
+// ─── Ikon Tour & Langkah-langkahnya ───────────────────────────────────────────
+const IconRecordTour = () => (
+    <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+    >
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+    </svg>
+);
+
+const RECORD_TOUR_STEPS = [
+    {
+        target: '.tour-patient-info',
+        title: 'Informasi Pasien',
+        content:
+            'Pastikan identitas pasien sudah sesuai. Indikator di sebelah kanan menunjukkan apakah sistem STT (Speech-to-Text) siap digunakan.',
+        icon: <IconRecordTour />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-action-bar',
+        title: 'Mulai Merekam',
+        content:
+            'Ketuk tombol biru ini untuk mulai merekam suara. Tombol ini juga digunakan untuk menghentikan rekaman.',
+        icon: <IconRecordTour />,
+        placement: 'top' as const, // Paksa di atas karena letaknya di ujung bawah layar
+    },
+    {
+        target: '.tour-transcription',
+        title: 'Hasil Transkripsi',
+        content:
+            'Setiap ucapan yang ditangkap akan diubah menjadi teks dan dikategorikan secara otomatis di kotak ini.',
+        icon: <IconRecordTour />,
+        placement: 'auto' as const,
+    },
+    {
+        target: '.tour-debug',
+        title: 'Panel Debug',
+        content:
+            'Jika suara tidak terdeteksi, buka panel ini untuk memantau proses sistem di balik layar.',
+        icon: <IconRecordTour />,
+        placement: 'auto' as const,
     },
 ];
 
@@ -1076,6 +1130,14 @@ export default function Record({
     return (
         <>
             <Head title="Perekaman Code Blue — V-Code" />
+
+            {/* ── PRODUCT TOUR INJECTION ── */}
+            <ProductTour
+                steps={RECORD_TOUR_STEPS}
+                storageKey="vcode_tour_record_page"
+                startDelay={500}
+            />
+
             <div className="flex justify-center">
                 <div className="w-full max-w-lg">
                     {/* ── PAGE HEADER ── */}
@@ -1125,7 +1187,7 @@ export default function Record({
                     </div>
 
                     {/* ── PATIENT INFO CARD ── */}
-                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                    <div className="tour-patient-info mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                         <div className="flex items-center gap-3 px-4 py-3.5">
                             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600">
                                 <svg
@@ -1189,7 +1251,7 @@ export default function Record({
                     )}
 
                     {/* ── TRANSKRIPSI CARD ── */}
-                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                    <div className="tour-transcription mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-white/5">
                             <div className="flex items-center gap-2">
                                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
@@ -1299,7 +1361,7 @@ export default function Record({
                     </div>
 
                     {/* ── DEBUG PANEL ── */}
-                    <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
+                    <div className="tour-debug mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-white/5 dark:bg-[#1C1F2A]">
                         <button
                             onClick={() => setShowDebug((v) => !v)}
                             className="flex w-full items-center justify-between bg-gray-50/50 px-4 py-3 hover:bg-gray-50 dark:bg-white/5 dark:hover:bg-white/10"
@@ -1383,7 +1445,7 @@ export default function Record({
 
             {/* ── FIXED BOTTOM ACTION BAR ── */}
             <div className="fixed right-0 bottom-24 left-0 z-40 flex justify-center px-4 md:relative md:bottom-auto md:mt-6 md:px-0">
-                <div className="w-full max-w-lg rounded-[2rem] border border-white/60 bg-white/80 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none dark:border-white/10 dark:bg-[#1C1F2A]/90">
+                <div className="tour-action-bar w-full max-w-lg rounded-[2rem] border border-white/60 bg-white/80 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none dark:border-white/10 dark:bg-[#1C1F2A]/90">
                     {!isRecording && timer > 0 ? (
                         <button
                             onClick={saveDraft}
