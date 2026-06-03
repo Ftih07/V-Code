@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import AppLayout from '@/layouts/new-app-layout';
 import ProductTour from '@/components/ProductTour';
+import AppLayout from '@/layouts/new-app-layout';
 
 // ─── Ikon kecil untuk tooltip tour ───────────────────────────────────────────
 const IconMic = () => (

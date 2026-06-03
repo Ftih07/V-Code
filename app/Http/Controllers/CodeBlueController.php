@@ -87,19 +87,26 @@ class CodeBlueController extends Controller
 
     public function startSession(Request $request)
     {
-        // Validation untuk Leader dan Team dihilangkan
+        // Tambahkan aturan unique:patients,rm_number
         $request->validate([
             'name' => 'required|string|max:255',
-            'rm_number' => 'required|string|max:50',
+            'rm_number' => 'required|string|max:50|unique:patients,rm_number',
             'ward_location' => 'required|string|max:100',
             'incident_type' => 'required|string',
+        ], [
+            // Custom message agar lebih dimengerti
+            'rm_number.unique' => 'Nomor Rekam Medis ini sudah terdaftar di sistem.',
         ]);
 
-        $patient = Patient::create([
-            'name' => $request->name,
-            'rm_number' => $request->rm_number,
-            'ward_location' => $request->ward_location,
-        ]);
+        // Jika RM sudah ada, mungkin kamu ingin mengambil datanya daripada membuat baru?
+        // Contoh jika ingin "ambil atau buat":
+        $patient = Patient::firstOrCreate(
+            ['rm_number' => $request->rm_number],
+            [
+                'name' => $request->name,
+                'ward_location' => $request->ward_location,
+            ]
+        );
 
         return redirect()->route('record.create', [
             'patient' => $patient->id,

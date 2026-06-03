@@ -2,8 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import AppLayout from '@/layouts/new-app-layout';
 import ProductTour from '@/components/ProductTour'; // Pastikan path ini benar
+import AppLayout from '@/layouts/new-app-layout';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type SessionLog = {

@@ -2,8 +2,8 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import axios from 'axios';
 import type { FormEventHandler } from 'react';
 import { useState, useEffect } from 'react';
-import AppLayout from '@/layouts/new-app-layout';
 import ProductTour from '@/components/ProductTour'; // Pastikan path ini benar
+import AppLayout from '@/layouts/new-app-layout';
 
 // ─── Ikon Tour ───────────────────────────────────────────────────────────────
 const IconReviewTour = () => (
@@ -227,11 +227,26 @@ export default function Review({ sessionData }: any) {
     };
 
     const getLogColor = (type: string) => {
-        if (type === 'result') return 'text-emerald-400';
-        if (type === 'send') return 'text-blue-400';
-        if (type === 'error') return 'text-red-400';
-        if (type === 'ws') return 'text-amber-400';
-        if (type === 'silence') return 'text-zinc-600';
+        if (type === 'result') {
+return 'text-emerald-400';
+}
+
+        if (type === 'send') {
+return 'text-blue-400';
+}
+
+        if (type === 'error') {
+return 'text-red-400';
+}
+
+        if (type === 'ws') {
+return 'text-amber-400';
+}
+
+        if (type === 'silence') {
+return 'text-zinc-600';
+}
+
         return 'text-zinc-400';
     };
 

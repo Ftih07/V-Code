@@ -5,6 +5,8 @@ namespace App\Filament\Resources\CodeBlueSessions;
 use App\Filament\Resources\CodeBlueSessions\Infolists\CodeBlueSessionInfolist;
 use App\Filament\Resources\CodeBlueSessions\Pages\ListCodeBlueSessions;
 use App\Filament\Resources\CodeBlueSessions\Pages\ViewCodeBlueSession;
+use App\Filament\Resources\CodeBlueSessions\RelationManagers\LogsRelationManager;
+use App\Filament\Resources\CodeBlueSessions\RelationManagers\SttDebugLogsRelationManager;
 use App\Filament\Resources\CodeBlueSessions\Tables\CodeBlueSessionsTable;
 use App\Models\CodeBlueSession;
 use Filament\Resources\Resource;
@@ -85,5 +87,13 @@ class CodeBlueSessionResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with(['patient', 'user', 'logs']);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            LogsRelationManager::class,
+            SttDebugLogsRelationManager::class,
+        ];
     }
 }

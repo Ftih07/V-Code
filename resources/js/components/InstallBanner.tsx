@@ -31,6 +31,7 @@ function wasDismissedRecently(): boolean {
         if (typeof window !== 'undefined') {
             return !!sessionStorage.getItem(DISMISSED_KEY);
         }
+
         return false;
     } catch {
         return false;
@@ -67,6 +68,7 @@ export default function InstallBanner() {
             // iOS tidak punya beforeinstallprompt — tampilkan panduan manual
             // Tunda sedikit agar tidak langsung muncul saat halaman baru terbuka
             const t = setTimeout(() => setShow(true), 2500);
+
             return () => clearTimeout(t);
         }
 

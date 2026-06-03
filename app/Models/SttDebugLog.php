@@ -13,4 +13,9 @@ class SttDebugLog extends Model
         'type',
         'message',
     ];
+
+    public function session()
+    {
+        return $this->belongsTo(CodeBlueSession::class, 'session_id');
+    }
 }

@@ -23,6 +23,7 @@ function getRect(selector: string): Rect | null {
 
     for (let i = 0; i < elements.length; i++) {
         const r = elements[i].getBoundingClientRect();
+
         // Cek apakah elemennya benar-benar tampil di layar (tidak display: none)
         if (r.width > 0 && r.height > 0) {
             return {
@@ -49,7 +50,7 @@ function calcTooltipPos(
     const gap = 16;
 
     // Kita tinggikan sedikit estimasi tinggi tooltip untuk mobile (lebih aman)
-    const safeTooltipH = 220;
+    const safeTooltipH = tooltipH;
 
     const positions = {
         bottom: {
@@ -97,10 +98,15 @@ function calcTooltipPos(
         const spaceAbove = rect.top - PADDING;
         const spaceRight = vw - (rect.left + rect.width + PADDING);
 
-        if (spaceBelow >= safeTooltipH + gap) chosen = positions.bottom;
-        else if (spaceAbove >= safeTooltipH + gap) chosen = positions.top;
-        else if (spaceRight >= tooltipW + gap) chosen = positions.right;
-        else chosen = positions.bottom; // Fallback bawaan
+        if (spaceBelow >= safeTooltipH + gap) {
+            chosen = positions.bottom;
+        } else if (spaceAbove >= safeTooltipH + gap) {
+            chosen = positions.top;
+        } else if (spaceRight >= tooltipW + gap) {
+            chosen = positions.right;
+        } else {
+            chosen = positions.bottom;
+        } // Fallback bawaan
     } else {
         chosen = positions[placement] ?? positions.bottom;
     }
@@ -108,6 +114,7 @@ function calcTooltipPos(
     // ─── THE MAGIC FIX: VIEWPORT BOUNDARY ───
     // 1. Cegah tooltip menembus batas BAWAH layar (sisakan ruang aman 40px)
     const maxTop = vh - safeTooltipH - 40;
+
     if (chosen.top > maxTop) {
         chosen.top = maxTop;
         chosen.arrow = undefined; // Sembunyikan panah karena tooltip terpaksa menimpa target
@@ -209,7 +216,7 @@ function Arrow({ dir }: { dir: 'top' | 'bottom' | 'left' | 'right' }) {
     const size = 7;
     const color = '#fff';
 
-    if (dir === 'top')
+    if (dir === 'top') {
         return (
             <span
                 style={{
@@ -223,7 +230,9 @@ function Arrow({ dir }: { dir: 'top' | 'bottom' | 'left' | 'right' }) {
                 }}
             />
         );
-    if (dir === 'bottom')
+    }
+
+    if (dir === 'bottom') {
         return (
             <span
                 style={{
@@ -237,7 +246,9 @@ function Arrow({ dir }: { dir: 'top' | 'bottom' | 'left' | 'right' }) {
                 }}
             />
         );
-    if (dir === 'left')
+    }
+
+    if (dir === 'left') {
         return (
             <span
                 style={{
@@ -251,6 +262,8 @@ function Arrow({ dir }: { dir: 'top' | 'bottom' | 'left' | 'right' }) {
                 }}
             />
         );
+    }
+
     return (
         <span
             style={{
@@ -527,8 +540,10 @@ export default function ProductTour({
     // ── Mount: cek localStorage ──────────────────────────────────────────────
     useEffect(() => {
         const seen = localStorage.getItem(storageKey);
+
         if (!seen) {
             const t = setTimeout(() => setActive(true), startDelay);
+
             return () => clearTimeout(t);
         }
     }, [storageKey, startDelay]);
@@ -536,6 +551,7 @@ export default function ProductTour({
     // ── Inject keyframe CSS once ─────────────────────────────────────────────
     useEffect(() => {
         const id = 'product-tour-styles';
+
         if (!document.getElementById(id)) {
             const style = document.createElement('style');
             style.id = id;
@@ -556,12 +572,16 @@ export default function ProductTour({
             const el = document.querySelector(
                 step.target,
             ) as HTMLElement | null;
+
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             // Wait for scroll, then measure
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+            }
+
             rafRef.current = window.setTimeout(() => {
                 setRect(getRect(step.target));
                 setAnimKey((k) => k + 1);
@@ -571,14 +591,20 @@ export default function ProductTour({
     );
 
     useEffect(() => {
-        if (active) measureStep(stepIndex);
+        if (active) {
+            measureStep(stepIndex);
+        }
     }, [active, stepIndex, measureStep]);
 
     // ── Window resize: re-measure ────────────────────────────────────────────
     useEffect(() => {
-        if (!active) return;
+        if (!active) {
+            return;
+        }
+
         const onResize = () => measureStep(stepIndex);
         window.addEventListener('resize', onResize);
+
         return () => window.removeEventListener('resize', onResize);
     }, [active, stepIndex, measureStep]);
 
@@ -597,10 +623,14 @@ export default function ProductTour({
     };
 
     const back = () => {
-        if (stepIndex > 0) setStepIndex((i) => i - 1);
+        if (stepIndex > 0) {
+            setStepIndex((i) => i - 1);
+        }
     };
 
-    if (!active) return null;
+    if (!active) {
+        return null;
+    }
 
     return createPortal(
         <>

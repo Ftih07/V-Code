@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import AppLayout from '@/layouts/new-app-layout';
 import ProductTour from '@/components/ProductTour'; // Pastikan path ini benar
+import AppLayout from '@/layouts/new-app-layout';
 
 // ─── Ikon Tour ───────────────────────────────────────────────────────────────
 const IconCheck = () => (

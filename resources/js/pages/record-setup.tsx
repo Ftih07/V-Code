@@ -1,7 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { FormEventHandler } from 'react';
-import AppLayout from '@/layouts/new-app-layout';
 import ProductTour from '@/components/ProductTour';
+import AppLayout from '@/layouts/new-app-layout';
 
 // ─── Ikon tooltip ─────────────────────────────────────────────────────────────
 const IconUser = () => (
@@ -268,7 +268,7 @@ export default function RecordSetup() {
                                         className={inputClass}
                                     />
                                     {errors.rm_number && (
-                                        <p className="mt-1.5 text-xs text-red-500">
+                                        <p className="mt-1.5 text-xs font-semibold text-red-500">
                                             {errors.rm_number}
                                         </p>
                                     )}

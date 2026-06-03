@@ -20,6 +20,7 @@ class CodeBlueSession extends Model
         'team_members' => 'array',
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'created_at' => 'datetime',
     ];
 
     public function user()
@@ -35,5 +36,10 @@ class CodeBlueSession extends Model
     public function logs()
     {
         return $this->hasMany(SessionLog::class, 'session_id');
+    }
+
+    public function sttDebugLogs()
+    {
+        return $this->hasMany(SttDebugLog::class, 'session_id');
     }
 }
