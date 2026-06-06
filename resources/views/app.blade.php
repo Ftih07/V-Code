@@ -4,6 +4,26 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        <!-- ─── PRIMARY META TAGS ─── -->
+        <title inertia>V-CODE — Dokumentasi Code Blue Berbasis Suara</title>
+        <meta name="title" content="V-CODE — Dokumentasi Code Blue Berbasis Suara">
+        <meta name="description" content="Sistem PWA Hybrid Speech-to-Text untuk rekam medis Code Blue. Dokumentasi otomatis secara real-time. Fokus pada pasien, bukan pada formulir.">
+
+        <!-- ─── OPEN GRAPH / WHATSAPP / FACEBOOK ─── -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{{ url('/') }}">
+        <meta property="og:title" content="V-CODE — Dokumentasi Code Blue Berbasis Suara">
+        <meta property="og:description" content="Sistem PWA Hybrid Speech-to-Text untuk rekam medis Code Blue. Dokumentasi otomatis secara real-time. Fokus pada pasien, bukan pada formulir.">
+        <!-- Gambar harus absolute URL, menggunakan helper asset() bawaan Laravel -->
+        <meta property="og:image" content="{{ asset('apple-touch-icon-background.png') }}">
+
+        <!-- ─── TWITTER ─── -->
+        <meta property="twitter:card" content="summary_large_image">
+        <meta property="twitter:url" content="{{ url('/') }}">
+        <meta property="twitter:title" content="V-CODE — Dokumentasi Code Blue Berbasis Suara">
+        <meta property="twitter:description" content="Sistem PWA Hybrid Speech-to-Text untuk rekam medis Code Blue. Dokumentasi otomatis secara real-time. Fokus pada pasien, bukan pada formulir.">
+        <meta property="twitter:image" content="{{ asset('apple-touch-icon-background.png') }}">
+
         <link rel="manifest" href="/manifest.json">
         <meta name="theme-color" content="#1e3a8a">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
