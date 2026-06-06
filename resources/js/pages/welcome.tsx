@@ -631,18 +631,14 @@ export default function Welcome({
                                     </div>
 
                                     <div className="overflow-hidden rounded-b-3xl">
-                                        <video
-                                            className="w-full"
-                                            autoPlay
-                                            muted
-                                            loop
-                                            playsInline
-                                        >
-                                            <source
-                                                src="/assets/demo.mp4"
-                                                type="video/mp4"
-                                            />
-                                        </video>
+                                        <iframe
+                                            className="aspect-video w-full"
+                                            src="https://www.youtube.com/embed/w_qYC7kG5F4?si=H71NesirjEiPNryR"
+                                            title="Demo V-Code"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        ></iframe>
                                     </div>
                                 </div>
                             </div>
@@ -954,19 +950,28 @@ export default function Welcome({
                                             Preview Cara Kerja
                                         </span>
                                     </div>
-                                    <div className="overflow-hidden rounded-b-3xl">
-                                        <video
-                                            className="w-full"
-                                            autoPlay
-                                            muted
-                                            loop
-                                            playsInline
-                                        >
-                                            <source
-                                                src="/assets/demo.mp4"
-                                                type="video/mp4"
-                                            />
-                                        </video>
+                                    <div className="relative flex justify-center overflow-hidden rounded-b-3xl bg-blue-50/60 py-12 sm:py-16 md:py-20 dark:bg-black/40">
+                                        {/* Efek cahaya glowing di belakang HP agar lebih estetik */}
+                                        <div className="pointer-events-none absolute top-1/2 left-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/30 blur-[80px] md:h-[500px] md:w-[500px]" />
+
+                                        {/* Frame HP (Makin besar di layar yang lebih lebar) */}
+                                        <div className="relative z-10 aspect-[9/19] w-full max-w-[260px] overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 bg-gray-800 shadow-2xl ring-1 shadow-blue-900/20 ring-black/5 sm:max-w-[320px] md:max-w-[380px] md:rounded-[3.2rem] md:border-[12px] lg:max-w-[420px] dark:ring-white/10">
+                                            {/* Poni (Notch) iPhone di bagian atas (menyesuaikan ukuran layar) */}
+                                            <div className="absolute top-0 left-1/2 z-20 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-gray-800 md:h-6 md:w-36 md:rounded-b-3xl" />
+
+                                            {/* Layar HP (tempat Iframe YouTube) */}
+                                            <div className="relative h-full w-full overflow-hidden rounded-[1.75rem] bg-black md:rounded-[2.5rem]">
+                                                <iframe
+                                                    className="absolute inset-0 h-full w-full"
+                                                    src="https://www.youtube.com/embed/v0BA0IwAZwQ?si=6TztN3ppwQ7zfRCX&rel=0"
+                                                    title="Demo V-Code"
+                                                    frameBorder="0"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                                    referrerPolicy="strict-origin-when-cross-origin"
+                                                    allowFullScreen
+                                                ></iframe>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </Reveal>
