@@ -287,7 +287,11 @@ const RECORD_TOUR_STEPS = [
 function classifyWithRules(
     text: string,
     rules: ClassifyRule[],
-): { category: string; targetField: keyof AutoFillData | null } {
+): {
+    category: string;
+    targetField: keyof AutoFillData | null;
+    isFallback: boolean;
+} {
     const activeRules = rules.length > 0 ? rules : FALLBACK_CLASSIFY_RULES;
     const lower = text.toLowerCase();
 
@@ -318,11 +322,12 @@ function classifyWithRules(
             return {
                 category: rule.category,
                 targetField: rule.target_field as keyof AutoFillData | null,
+                isFallback: false,
             };
         }
     }
 
-    return { category: 'tindakan', targetField: null };
+    return { category: 'tindakan', targetField: null, isFallback: true };
 }
 
 function isRefinement(a: string, b: string): boolean {
@@ -483,6 +488,7 @@ export default function Record({
     const isRecordingRef = useRef(false);
     const autoFillRef = useRef(autoFill);
     const classifyRulesRef = useRef<ClassifyRule[]>([]);
+    const hasTindakanRef = useRef(false);
 
     const streamRef = useRef<MediaStream | null>(null);
     const recorderRef = useRef<MediaRecorder | null>(null);
@@ -508,6 +514,7 @@ export default function Record({
 
     const killAll = useCallback(() => {
         isRecordingRef.current = false;
+        hasTindakanRef.current = false;
 
         if (wsRestartTimerRef.current) {
             clearTimeout(wsRestartTimerRef.current);
@@ -660,6 +667,12 @@ export default function Record({
             timeMark: string,
             timestamp: number,
         ): number => {
+            // --- New ---
+            if (category === 'tindakan') {
+                hasTindakanRef.current = true;
+            }
+            // -----------------------------
+
             let assignedIdx = -1;
             flushSync(() => {
                 setLogs((prev) => {
@@ -755,6 +768,7 @@ export default function Record({
 
             const form = new FormData();
             form.append('audio', blob, `seg.${ext}`);
+            form.append('has_tindakan', hasTindakanRef.current ? '1' : '0');
 
             try {
                 const res = await axios.post('/api/transcribe', form, {
@@ -769,14 +783,33 @@ export default function Record({
                         `Google [${Math.round(conf * 100)}%]: "${text}"`,
                         'result',
                     );
-                    const cat =
-                        res.data?.category ??
-                        classifyWithRules(text, classifyRulesRef.current)
-                            .category;
-                    const field =
-                        res.data?.target_field ??
-                        classifyWithRules(text, classifyRulesRef.current)
-                            .targetField;
+
+                    // --- 1. DETEKSI TINDAKAN ASLI ---
+                    const localCheck = classifyWithRules(
+                        text,
+                        classifyRulesRef.current,
+                    );
+
+                    // Kalau ini BUKAN noise, dan kategorinya BUKAN pengkajian/evaluasi, berarti ini valid Tindakan/Airway/dll
+                    if (
+                        !localCheck.isFallback &&
+                        localCheck.category !== 'pengkajian' &&
+                        localCheck.category !== 'evaluasi'
+                    ) {
+                        hasTindakanRef.current = true;
+                    }
+                    // --------------------------------
+
+                    let cat = res.data?.category ?? localCheck.category;
+                    let field =
+                        res.data?.target_field ?? localCheck.targetField;
+
+                    // --- 2. OVERRIDE PENGKAJIAN -> EVALUASI ---
+                    if (hasTindakanRef.current && cat === 'pengkajian') {
+                        cat = 'evaluasi';
+                        field = 'evaluation_result';
+                    }
+                    // ------------------------------------------
 
                     if (currentLogIdx !== -1) {
                         patchLog(currentLogIdx, text, cat);
@@ -893,14 +926,30 @@ export default function Record({
 
                 if (event.results[i].isFinal) {
                     const now = new Date();
-                    const { category, targetField } = classifyWithRules(
-                        text,
-                        classifyRulesRef.current,
-                    );
+
+                    // Tangkap isFallback-nya juga
+                    let { category, targetField, isFallback } =
+                        classifyWithRules(text, classifyRulesRef.current);
+
+                    // --- 1. DETEKSI TINDAKAN ASLI ---
+                    if (
+                        !isFallback &&
+                        category !== 'pengkajian' &&
+                        category !== 'evaluasi'
+                    ) {
+                        hasTindakanRef.current = true;
+                    }
+
+                    // --- 2. OVERRIDE PENGKAJIAN -> EVALUASI ---
+                    if (hasTindakanRef.current && category === 'pengkajian') {
+                        category = 'evaluasi';
+                        targetField = 'evaluation_result';
+                    }
+
                     dbg(`WS final: "${text}"`, 'ws');
                     const logIdx = insertLog(
                         text,
-                        category,
+                        category, // <--- Sekarang ini akan pakai 'evaluasi' jika override aktif
                         now.toLocaleTimeString('id-ID', { hour12: false }),
                         now.getTime(),
                     );
@@ -981,6 +1030,7 @@ export default function Record({
 
         streamRef.current = stream;
         isRecordingRef.current = true;
+        hasTindakanRef.current = false;
         setIsRecording(true);
         setInterimText('');
         setLogs([]);

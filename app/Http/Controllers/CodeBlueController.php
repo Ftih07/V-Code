@@ -348,6 +348,15 @@ class CodeBlueController extends Controller
             $clean = $this->normalize($corrected);
             $classification = $this->classify($clean);
 
+            // --- TAMBAHKAN LOGIKA INI ---
+            // Jika frontend menginformasikan bahwa sudah ada 'tindakan',
+            // ubah semua yang tadinya 'pengkajian' menjadi 'evaluasi'
+            if ($request->input('has_tindakan') == '1' && $classification['category'] === 'pengkajian') {
+                $classification['category'] = 'evaluasi';
+                $classification['target_field'] = 'evaluation_result'; // <--- TAMBAHKAN BARIS INI
+            }
+            // ----------------------------
+
             // ── Confidence check ──
             $confidence = $data['results'][0]['alternatives'][0]['confidence'] ?? 0.0;
 
